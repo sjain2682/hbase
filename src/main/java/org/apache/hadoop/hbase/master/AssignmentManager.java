@@ -2141,15 +2141,6 @@ public class AssignmentManager extends ZooKeeperListener {
    * @throws IOException
    */
   public void assignAllUserRegions() throws IOException, InterruptedException {
-    // Get all available servers
-    List<ServerName> servers = serverManager.getOnlineServersList();
-
-    // Remove the deadNotExpired servers from the server list.
-    removeDeadNotExpiredServers(servers);
-
-    // If there are no servers we need not proceed with region assignment.
-    if(servers.isEmpty()) return;
-
     // Skip assignment for regions of tables in DISABLING state because during clean cluster
     // startup no RS is alive and regions map also doesn't have any information about the regions.
     // See HBASE-6281.
@@ -2159,6 +2150,15 @@ public class AssignmentManager extends ZooKeeperListener {
     Map<HRegionInfo, ServerName> allRegions = MetaReader.fullScan(catalogTracker,
         disablingAndDisabledTables, true);
     if (allRegions == null || allRegions.isEmpty()) return;
+
+    // Get all available servers
+    List<ServerName> servers = serverManager.getOnlineServersList();
+
+    // Remove the deadNotExpired servers from the server list.
+    removeDeadNotExpiredServers(servers);
+
+    // If there are no servers we need not proceed with region assignment.
+    if(servers.isEmpty()) return;
 
     // Determine what type of assignment to do on startup
     boolean retainAssignment = master.getConfiguration().
