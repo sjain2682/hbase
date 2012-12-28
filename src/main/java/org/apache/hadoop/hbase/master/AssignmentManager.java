@@ -1597,7 +1597,7 @@ public class AssignmentManager extends ZooKeeperListener {
         return; // Should get reassigned later when RIT times out.
       }
       try {
-        LOG.debug("Assigning region " + state.getRegion().getRegionNameAsString() +
+        LOG.info("Assigning region " + state.getRegion().getRegionNameAsString() +
           " to " + plan.getDestination().toString());
         // Transition RegionState to PENDING_OPEN
         state.update(RegionState.State.PENDING_OPEN, System.currentTimeMillis(),
