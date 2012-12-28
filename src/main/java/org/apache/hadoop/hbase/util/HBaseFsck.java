@@ -163,6 +163,7 @@ public class HBaseFsck {
   private HTable meta;
   protected ExecutorService executor; // threads to retrieve data from regionservers
   private long startMillis = System.currentTimeMillis();
+  private Path sidelineDir = null;
   private HFileCorruptionChecker hfcc;
   private int retcode = 0;
 
@@ -842,24 +843,27 @@ public class HBaseFsck {
       }
     }
 
-    // we can rebuild, move old root and meta out of the way and start
-    LOG.info("HDFS regioninfo's seems good.  Sidelining old .META.");
-    sidelineOldRootAndMeta();
+    if (fix) {
+      // we can rebuild, move old root and meta out of the way and start
+      LOG.info("HDFS regioninfo's seems good.  Sidelining old .META.");
+      Path backupDir = sidelineOldRootAndMeta();
 
-    LOG.info("Creating new .META.");
-    HRegion meta = createNewRootAndMeta();
+      LOG.info("Creating new .META.");
+      HRegion meta = createNewRootAndMeta();
 
-    // populate meta
-    List<Put> puts = generatePuts(tablesInfo);
-    if (puts == null) {
-      LOG.fatal("Problem encountered when creating new .META. entries.  " +
-        "You may need to restore the previously sidelined -ROOT- and .META.");
-      return false;
+      // populate meta
+      List<Put> puts = generatePuts(tablesInfo);
+      if (puts == null) {
+        LOG.fatal("Problem encountered when creating new .META. entries.  " +
+            "You may need to restore the previously sidelined -ROOT- and .META.");
+        return false;
+      }
+      meta.put(puts.toArray(new Put[0]));
+      meta.close();
+      meta.getLog().closeAndDelete();
+      LOG.info("Success! .META. table rebuilt.");
+      LOG.info("Old -ROOT- and .META. are moved into " + backupDir);
     }
-    meta.put(puts.toArray(new Put[0]));
-    meta.close();
-    meta.getLog().closeAndDelete();
-    LOG.info("Success! .META. table rebuilt.");
     return true;
   }
 
@@ -883,11 +887,13 @@ public class HBaseFsck {
   }
 
   private Path getSidelineDir() throws IOException {
-    Path hbaseDir = FSUtils.getRootDir(conf);
-    Path hbckDir = new Path(hbaseDir.getParent(), "hbck");
-    Path backupDir = new Path(hbckDir, hbaseDir.getName() + "-"
-        + startMillis);
-    return backupDir;
+    if (sidelineDir == null) {
+      Path hbaseDir = FSUtils.getRootDir(conf);
+      Path hbckDir = new Path(hbaseDir, HConstants.HBCK_SIDELINEDIR_NAME);
+      sidelineDir = new Path(hbckDir, hbaseDir.getName() + "-"
+          + startMillis);
+    }
+    return sidelineDir;
   }
 
   /**
@@ -1001,8 +1007,7 @@ public class HBaseFsck {
     // put current -ROOT- and .META. aside.
     Path hbaseDir = new Path(conf.get(HConstants.HBASE_DIR));
     FileSystem fs = hbaseDir.getFileSystem(conf);
-    Path backupDir = new Path(hbaseDir.getParent(), hbaseDir.getName() + "-"
-        + startMillis);
+    Path backupDir = getSidelineDir();
     fs.mkdirs(backupDir);
 
     sidelineTable(fs, HConstants.ROOT_TABLE_NAME, hbaseDir, backupDir);
@@ -3128,18 +3133,27 @@ public class HBaseFsck {
     return retcode;
   }
 
+  /**
+   * 
+   * @param sidelineDir - HDFS path to sideline data
+   */
+  public void setSidelineDir(String sidelineDir) {
+    this.sidelineDir = new Path(sidelineDir);
+  }
+
   protected HBaseFsck printUsageAndExit() {
     System.err.println("Usage: fsck [opts] {only tables}");
     System.err.println(" where [opts] are:");
     System.err.println("   -help Display help options (this)");
     System.err.println("   -details Display full report of all regions.");
-    System.err.println("   -timelag {timeInSeconds}  Process only regions that " +
+    System.err.println("   -timelag <timeInSeconds>  Process only regions that " +
                        " have not experienced any metadata updates in the last " +
-                       " {{timeInSeconds} seconds.");
+                       " <timeInSeconds> seconds.");
     System.err.println("   -sleepBeforeRerun {timeInSeconds} Sleep this many seconds" +
         " before checking if the fix worked if run with -fix");
     System.err.println("   -summary Print only summary of the tables and status.");
     System.err.println("   -metaonly Only check the state of ROOT and META tables.");
+    System.err.println("   -sidelineDir <hdfs://> HDFS path to backup existing files and folders.");
 
     System.err.println("");
     System.err.println("  Metadata Repair options: (expert features, use with caution!)");
@@ -3217,7 +3231,7 @@ public class HBaseFsck {
           long timelag = Long.parseLong(args[i+1]);
           setTimeLag(timelag);
         } catch (NumberFormatException e) {
-          System.err.println("-timelag needs a numeric value.");
+          System.err.println("HBaseFsck: -timelag needs a numeric value.");
           return printUsageAndExit();
         }
         i++;
@@ -3229,10 +3243,17 @@ public class HBaseFsck {
         try {
           sleepBeforeRerun = Long.parseLong(args[i+1]);
         } catch (NumberFormatException e) {
-          System.err.println("-sleepBeforeRerun needs a numeric value.");
+          System.err.println("HBaseFsck: -sleepBeforeRerun needs a numeric value.");
           return printUsageAndExit();
         }
         i++;
+      } else if (cmd.equals("-sidelineDir")) {
+        if (i == args.length - 1) {
+          System.err.println("HBaseFsck: -sidelineDir needs a value.");
+          printUsageAndExit();
+        }
+        i++;
+        setSidelineDir(args[i]);
       } else if (cmd.equals("-fix")) {
         System.err.println("This option is deprecated, please use " +
           "-fixAssignments instead.");
