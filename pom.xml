@@ -27,15 +27,15 @@
    -->
 
   <parent>
-    <groupId>org.apache</groupId>
-    <artifactId>apache</artifactId>
-    <version>8</version>
+    <groupId>com.mapr</groupId>
+    <artifactId>mapr-root</artifactId>
+    <version>1.0</version>
   </parent>
 
   <groupId>org.apache.hbase</groupId>
   <artifactId>hbase</artifactId>
   <packaging>jar</packaging>
-  <version>0.92.2</version>
+  <version>0.92.2-mapr-SNAPSHOT</version>
   <name>HBase</name>
   <description>
     HBase is the &amp;lt;a href="http://hadoop.apache.org"&amp;rt;Hadoop&lt;/a&amp;rt; database. Use it when you need
@@ -44,12 +44,6 @@
     of commodity hardware.
   </description>
   <url>http://hbase.apache.org</url>
-
-  <scm>
-    <connection>scm:svn:http://svn.apache.org/repos/asf/hbase/trunk</connection>
-    <developerConnection>scm:svn:https://svn.apache.org/repos/asf/hbase/trunk</developerConnection>
-    <url>http://svn.apache.org/viewvc/hbase/trunk</url>
-  </scm>
 
   <issueManagement>
     <system>JIRA</system>
@@ -199,6 +193,12 @@
 
   <repositories>
     <repository>
+      <id>mapr release</id>
+      <url>http://repository.mapr.com/maven/</url>
+      <snapshots><enabled>true</enabled></snapshots>
+      <releases><enabled>true</enabled></releases>
+    </repository>
+    <repository>
       <id>apache release</id>
       <url>https://repository.apache.org/content/repositories/releases/</url>
     </repository>
@@ -267,7 +267,7 @@
         <enabled>true</enabled>
       </releases>
     </pluginRepository>
-  </pluginRepositories>  
+  </pluginRepositories>
 
   <build>
     <!-- Some plugins (javadoc for example) can be used in the normal build- and the site phase.
@@ -581,6 +581,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
+        <version>2.2.1</version>
         <executions>
           <execution>
             <id>attach-sources</id>
@@ -818,6 +819,14 @@
 
   <properties>
     <compileSource>1.6</compileSource>
+
+    <!-- MapR custom properties -->
+    <!-- This should be set to the Apache Github tag this release is based upon -->
+    <apache.git.tag>0.92.2</apache.git.tag>
+    <!-- Latest version of Hadoop distributed with MapR -->
+    <mapr.hadoop.version>0.20.2-2.1.2-SNAPSHOT</mapr.hadoop.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- Dependencies -->
     <avro.version>1.5.3</avro.version>
@@ -1369,42 +1378,18 @@
         </property>
       </activation>
       <properties>
-        <hadoop.version>1.0.3</hadoop.version>
         <slf4j.version>1.4.3</slf4j.version>
       </properties>
       <dependencies>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-core</artifactId>
-          <version>${hadoop.version}</version>
-          <optional>true</optional>
-          <exclusions>
-            <exclusion>
-              <groupId>hsqldb</groupId>
-              <artifactId>hsqldb</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>net.sf.kosmosfs</groupId>
-              <artifactId>kfs</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.eclipse.jdt</groupId>
-              <artifactId>core</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>net.java.dev.jets3t</groupId>
-              <artifactId>jets3t</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>oro</groupId>
-              <artifactId>oro</artifactId>
-            </exclusion>
-          </exclusions>
+          <version>${mapr.hadoop.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-test</artifactId>
-          <version>${hadoop.version}</version>
+          <version>${mapr.hadoop.version}</version>
           <optional>true</optional>
           <scope>test</scope>
         </dependency>
@@ -1486,7 +1471,7 @@
         <slf4j.version>1.4.3</slf4j.version>
       </properties>
       <build>
-        <finalName>${artifactId}-${version}-security</finalName>
+        <finalName>${project.artifactId}-${project.version}</finalName>
         <plugins>
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
