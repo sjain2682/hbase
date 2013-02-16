@@ -34,10 +34,13 @@
 # Below are what we set by default.  May only work with SUN JVM.
 # For more on why as well as other possible settings,
 # see http://wiki.apache.org/hadoop/PerformanceTuning
-export HBASE_OPTS="$HBASE_OPTS -XX:+UseConcMarkSweepGC"
+# and http://www.scribd.com/doc/37127094/GCTuningPresentationFISL10
+export HBASE_OPTS="$HBASE_OPTS -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:NewRatio=16 -XX:CMSInitiatingOccupancyFraction=70 -XX:+UseCMSInitiatingOccupancyOnly -XX:MaxGCPauseMillis=100"
 
-# Uncomment below to enable java garbage collection logging in the .out file.
-# export HBASE_OPTS="$HBASE_OPTS -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps $HBASE_GC_OPTS" 
+# Uncomment below to enable java garbage collection logging
+# export HBASE_GC_OPTS="$HBASE_GC_OPTS -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps"
+
+export HBASE_OPTS="$HBASE_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/cores/ $HBASE_GC_OPTS"
 
 # Uncomment below (along with above GC logging) to put GC information in its own logfile (will set HBASE_GC_OPTS)
 # export HBASE_USE_GC_LOGFILE=true
