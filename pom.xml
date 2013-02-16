@@ -27,16 +27,16 @@
    -->
 
   <parent>
-    <groupId>org.apache</groupId>
-    <artifactId>apache</artifactId>
-    <version>8</version>
+    <groupId>com.mapr</groupId>
+    <artifactId>mapr-root</artifactId>
+    <version>1.0</version>
     <relativePath></relativePath><!-- no parent resolution -->
   </parent>
 
-  <groupId>org.apache.hbase</groupId>
+  <groupId>com.mapr.hbase</groupId>
   <artifactId>hbase</artifactId>
   <packaging>jar</packaging>
-  <version>0.94.3</version>
+  <version>0.94.3-mapr-SNAPSHOT</version>
   <name>HBase</name>
   <description>
     HBase is the &amp;lt;a href="http://hadoop.apache.org"&amp;rt;Hadoop&lt;/a&amp;rt; database. Use it when you need
@@ -985,6 +985,10 @@
       ${maven.build.timestamp}
     </buildDate>
     <compileSource>1.6</compileSource>
+    <apache.git.tag>0.94.3</apache.git.tag>
+    <mapr.hadoop.version>0.20.2-2.1.2-SNAPSHOT</mapr.hadoop.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
     <!-- Dependencies -->
     <avro.version>1.5.3</avro.version>
@@ -1570,42 +1574,19 @@
         </property>
       </activation>
       <properties>
-        <hadoop.version>1.0.4</hadoop.version>
         <slf4j.version>1.4.3</slf4j.version>
       </properties>
       <dependencies>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-core</artifactId>
-          <version>${hadoop.version}</version>
-          <optional>true</optional>
-          <exclusions>
-            <exclusion>
-              <groupId>hsqldb</groupId>
-              <artifactId>hsqldb</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>net.sf.kosmosfs</groupId>
-              <artifactId>kfs</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.eclipse.jdt</groupId>
-              <artifactId>core</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>net.java.dev.jets3t</groupId>
-              <artifactId>jets3t</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>oro</groupId>
-              <artifactId>oro</artifactId>
-            </exclusion>
-          </exclusions>
+          <groupId>com.mapr.hadoop</groupId>
+          <artifactId>hadoop-all</artifactId>
+          <version>${mapr.hadoop.version}</version>
+          <type>pom</type>
         </dependency>
         <dependency>
-          <groupId>org.apache.hadoop</groupId>
+          <groupId>com.mapr.hadoop</groupId>
           <artifactId>hadoop-test</artifactId>
-          <version>${hadoop.version}</version>
+          <version>${mapr.hadoop.version}</version>
           <optional>true</optional>
           <scope>test</scope>
         </dependency>
