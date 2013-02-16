@@ -331,6 +331,9 @@ public class PerformanceEvaluation extends Configured implements Tool {
       List<InputSplit> splitList = new ArrayList<InputSplit>();
 
       for (FileStatus file: listStatus(job)) {
+        if (file.isDir()) {
+          continue;
+        }
         Path path = file.getPath();
         FileSystem fs = path.getFileSystem(job.getConfiguration());
         FSDataInputStream fileIn = fs.open(path);
@@ -651,7 +654,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     job.setNumReduceTasks(1);
 
     job.setOutputFormatClass(TextOutputFormat.class);
-    TextOutputFormat.setOutputPath(job, new Path(inputDir,"outputs"));
+    TextOutputFormat.setOutputPath(job, new Path(inputDir.getParent(), "outputs"));
 
     TableMapReduceUtil.addDependencyJars(job);
     // Add a Class from the hbase.jar so it gets registered too.
@@ -670,14 +673,14 @@ public class PerformanceEvaluation extends Configured implements Tool {
    * @throws IOException
    */
   private Path writeInputFile(final Configuration c) throws IOException {
-    FileSystem fs = FileSystem.get(c);
-    if (!fs.exists(PERF_EVAL_DIR)) {
-      fs.mkdirs(PERF_EVAL_DIR);
-    }
     SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-    Path subdir = new Path(PERF_EVAL_DIR, formatter.format(new Date()));
-    fs.mkdirs(subdir);
-    Path inputFile = new Path(subdir, "input.txt");
+    Path jobdir = new Path(PERF_EVAL_DIR, formatter.format(new Date()));
+    Path inputDir = new Path(jobdir, "inputs");
+
+    FileSystem fs = FileSystem.get(c);
+    fs.mkdirs(inputDir);
+
+    Path inputFile = new Path(inputDir, "input.txt");
     PrintStream out = new PrintStream(fs.create(inputFile));
     // Make input random.
     Map<Integer, String> m = new TreeMap<Integer, String>();
@@ -705,7 +708,7 @@ public class PerformanceEvaluation extends Configured implements Tool {
     } finally {
       out.close();
     }
-    return subdir;
+    return inputDir;
   }
 
   /**
