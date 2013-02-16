@@ -142,4 +142,31 @@
     version is X.X.X-SNAPSHOT"
     </description>
   </property>
+
+  <!-- mapr configs-->
+  <property>
+    <name>fs.default.name</name>
+    <value>file:///</value>
+  </property>
+
+  <property>
+    <name>dfs.support.append</name>
+    <value>true</value>
+  </property>
+
+  <property>
+    <name>fs.mapr.aggregate.writes</name>
+    <value>false</value>
+  </property>
+
+  <property>
+    <name>fs.mapr.readbuffering</name>
+    <value>false</value>
+  </property>
+
+  <property>
+    <name>hbase.fsutil.maprfs.impl</name>
+    <value>org.apache.hadoop.hbase.util.FSMapRUtils</value>
+  </property>
+
 </configuration>

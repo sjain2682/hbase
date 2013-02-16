@@ -51,7 +51,34 @@
 #   JRUBY_OPTS       Extra options (eg '--1.9') passed to the hbase shell.
 #                    Empty by default.
 #
-bin=`dirname "$0"`
+
+function get_canonical_dir() {
+  target="$1"
+
+  canonical_name=`readlink -f ${target} 2>/dev/null`
+  if [[ $? -eq 0 ]]; then
+    canonical_dir=`dirname $canonical_name`
+    echo ${canonical_dir}
+    return
+  fi
+
+  # Mac has no readlink -f
+  cd `dirname ${target}`
+  target=`basename ${target}`
+
+  # chase down the symlinks
+  while [ -L ${target} ]; do
+    target=`readlink ${target}`
+    cd `dirname ${target}`
+    target=`basename ${target}`
+  done
+
+  canonical_dir=`pwd -P`
+  ret=${canonical_dir}
+  echo $ret
+}
+ 
+bin=$(get_canonical_dir "$0")
 bin=`cd "$bin">/dev/null; pwd`
 
 # This will set HBASE_HOME, etc.
@@ -225,6 +252,11 @@ if [ -f ${HADOOP_IN_PATH} ]; then
     JAVA_LIBRARY_PATH=$(append_path "${JAVA_LIBRARY_PATH}" "$HADOOP_JAVA_LIBRARY_PATH")
   fi
   CLASSPATH=$(append_path "${CLASSPATH}" `${HADOOP_IN_PATH} classpath 2>/dev/null`)
+fi
+
+if [ ! -z $HADOOP_HOME ]; then
+  #MapR: Add extra mapr jars
+  CLASSPATH=$(append_path "${CLASSPATH}" "${HADOOP_EXTRA_JARS}")
 fi
 
 if [ -d "${HBASE_HOME}/build/native" -o -d "${HBASE_HOME}/lib/native" ]; then

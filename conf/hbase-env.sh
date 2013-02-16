@@ -92,3 +92,7 @@ export HBASE_OPTS="$HBASE_OPTS -XX:+UseConcMarkSweepGC"
 
 # Tell HBase whether it should manage it's own instance of Zookeeper or not.
 # export HBASE_MANAGES_ZK=true
+
+BASEMAPR=${MAPR_HOME:-/opt/mapr}
+env=${BASEMAPR}/conf/env.sh
+[ -f $env ] && . $env

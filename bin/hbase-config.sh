@@ -26,6 +26,25 @@
 
 # resolve links - "${BASH_SOURCE-$0}" may be a softlink
 
+BASEMAPR=${MAPR_HOME:-/opt/mapr}
+HADOOP_HOME=${BASEMAPR}/hadoop/hadoop-0.20.2
+
+#space separated & will be expected in ${HADOOP_HOME}/lib
+EXTRA_JARS="maprfs-*.jar mapr-hbase-*.jar"
+for jar in ${EXTRA_JARS}; do
+  JARS=`echo $(ls ${HADOOP_HOME}/lib/${jar} 2> /dev/null) | sed 's/\s\+/:/'`
+  if [ "${JARS}" != "" ]; then
+    HADOOP_EXTRA_JARS=${HADOOP_EXTRA_JARS}:${JARS}
+  fi
+done
+
+MAPR_LIB_JARS="libprotodefs.jar"
+for jar in ${MAPR_LIB_JARS}; do
+  if [ -f ${BASEMAPR}/lib/${jar} ]; then
+    HADOOP_EXTRA_JARS=${HADOOP_EXTRA_JARS}:${BASEMAPR}/lib/${jar}
+  fi
+done
+
 this="${BASH_SOURCE-$0}"
 while [ -h "$this" ]; do
   ls=`ls -ld "$this"`
