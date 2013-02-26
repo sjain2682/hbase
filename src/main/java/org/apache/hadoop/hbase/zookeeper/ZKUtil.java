@@ -38,7 +38,7 @@ import javax.security.auth.login.LoginException;
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.AppConfigurationEntry.LoginModuleControlFlag;
 import org.apache.hadoop.security.SecurityUtil;
-import org.apache.hadoop.security.authentication.util.KerberosUtil;
+//import org.apache.hadoop.security.authentication.util.KerberosUtil;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -245,7 +245,7 @@ public class ZKUtil {
     }
 
     private static final AppConfigurationEntry KEYTAB_KERBEROS_LOGIN =
-      new AppConfigurationEntry(KerberosUtil.getKrb5LoginModuleName(),
+      new AppConfigurationEntry("", //KerberosUtil.getKrb5LoginModuleName(),
                                 LoginModuleControlFlag.REQUIRED,
                                 KEYTAB_KERBEROS_OPTIONS);
 

@@ -269,7 +269,7 @@ public class LoadIncrementalHFiles extends Configured implements Tool {
       if(useSecure) {
         if(userToken != null) {
           try {
-            userToken.cancel(cfg);
+//            userToken.cancel(cfg);
           } catch (Exception e) {
             LOG.warn("Failed to cancel HDFS delegation token.", e);
           }
