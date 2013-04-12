@@ -121,4 +121,12 @@ public class RegexStringComparator extends WritableByteArrayComparable {
     out.writeUTF(charset.name());
   }
 
+  public String getCharset() {
+    return charset.name();
+  }
+
+  public String getPattern() {
+    return pattern.pattern();
+  }
+
 }
