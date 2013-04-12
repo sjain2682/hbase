@@ -717,6 +717,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void createTableAsync(HTableDescriptor desc, byte [][] splitKeys)
   throws IOException {
+    desc.validate();
     if (checkIfMapRTable(desc.getAlias(), true)) {
       maprHBaseAdmin_.createTable(desc, splitKeys);
       return;
@@ -1292,6 +1293,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void addColumn(byte [] tableName, HColumnDescriptor column)
   throws IOException {
+    column.validate();
     if (checkIfMapRTable(tableName, true)) {
       maprHBaseAdmin_.addColumn(Bytes.toString(tableName), column);
       return;
@@ -1363,6 +1365,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    */
   public void modifyColumn(final byte [] tableName, HColumnDescriptor descriptor)
   throws IOException {
+    descriptor.validate();
     if (checkIfMapRTable(tableName, true)) {
       maprHBaseAdmin_.modifyColumn(Bytes.toString(tableName), descriptor);
       return;
