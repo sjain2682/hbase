@@ -1123,4 +1123,10 @@ public class HTableDescriptor implements WritableComparable<HTableDescriptor> {
     // .META. and -ROOT- should return system user as owner, not null (see MasterFileSystem.java:bootstrap()).
     return null;
   }
+
+  public void validate() {
+    for (HColumnDescriptor cf : families.values()) {
+      cf.validate();
+    }
+  }
 }
