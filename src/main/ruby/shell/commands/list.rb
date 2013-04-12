@@ -27,16 +27,29 @@ List all tables in hbase. Optional regular expression parameter could
 be used to filter the output. Examples:
 
   hbase> list
-  hbase> list 'abc.*'
+  hbase> list '/tables/t.*'
 EOF
       end
 
-      def command(regex = ".*")
+      def command(regex = nil)
+        if regex == nil
+          if m7admin.m7_available? && !m7admin.is_m7_default?
+            $stderr.puts "Listing HBase tables. Specify a path or configure namespace mappings to list M7 tables."
+            begin
+              connection = admin.getConnection
+            rescue
+            end
+            if connection == nil
+              $stderr.puts "Unable to connect to HBase services. Listing M7 tables from user's home directory."
+            end
+          end
+          regex = ".*"
+        end
+
         now = Time.now
         formatter.header([ "TABLE" ])
 
-        regex = /#{regex}/ unless regex.is_a?(Regexp)
-        list = admin.list.grep(regex)
+        list = admin.list(regex)
         list.each do |table|
           formatter.row([ table ])
         end
