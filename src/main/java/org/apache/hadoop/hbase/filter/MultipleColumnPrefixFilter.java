@@ -136,4 +136,8 @@ public class MultipleColumnPrefixFilter extends FilterBase {
         }
       });
   }
+
+  public TreeSet<byte[]> getSortedPrefixes() {
+    return sortedPrefixes;
+  }
 }

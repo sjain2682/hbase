@@ -180,11 +180,6 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
   protected Map<ImmutableBytesWritable,ImmutableBytesWritable> values =
     new HashMap<ImmutableBytesWritable,ImmutableBytesWritable>();
 
-  /*
-   * Cache the max versions rather than calculate it every time.
-   */
-  private int cachedMaxVersions = -1;
-
   /**
    * Default constructor. Must be present for Writable.
    */
@@ -462,7 +457,8 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
 
   /** @return maximum number of versions */
   public int getMaxVersions() {
-    return this.cachedMaxVersions;
+    String value = getValue(HConstants.VERSIONS);
+    return (value != null)? Integer.valueOf(value).intValue(): 0;
   }
 
   /**
@@ -470,7 +466,6 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
    */
   public void setMaxVersions(int maxVersions) {
     setValue(HConstants.VERSIONS, Integer.toString(maxVersions));
-    cachedMaxVersions = maxVersions;
   }
 
   /**
@@ -862,9 +857,6 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
         // Convert old values.
         setValue(COMPRESSION, Compression.Algorithm.NONE.getName());
       }
-      String value = getValue(HConstants.VERSIONS);
-      this.cachedMaxVersions = (value != null)?
-          Integer.valueOf(value).intValue(): DEFAULT_VERSIONS;
     }
   }
 
@@ -892,5 +884,26 @@ public class HColumnDescriptor implements WritableComparable<HColumnDescriptor> 
         result = 1;
     }
     return result;
+  }
+
+  /**
+   * MapR extension
+   *
+   * @param key The key.
+   * @param value The value.
+   */
+  public HColumnDescriptor setValueBool(String key, boolean value) {
+    setValue(key, Boolean.toString(value));
+    return this;
+  }
+
+  public HColumnDescriptor setValueInt(String key, int value) {
+    setValue(key, Integer.toString(value));
+    return this;
+  }
+
+  public HColumnDescriptor setValueStr(String key, String value) {
+    setValue(key, value);
+    return this;
   }
 }

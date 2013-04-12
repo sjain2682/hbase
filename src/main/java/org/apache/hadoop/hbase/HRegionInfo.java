@@ -384,6 +384,17 @@ implements WritableComparable<HRegionInfo> {
   }
 
   /**
+   * Gets the tablename from the specified table or region name
+   * @param tableOrRegionName
+   * @return
+   */
+  public static String getTableName(String tableOrRegionName) {
+    int offset = tableOrRegionName.indexOf(DELIMITER);
+    return (offset != -1)
+        ? tableOrRegionName.substring(0, offset) : tableOrRegionName;
+  }
+
+  /**
    * Gets the table name from the specified region name.
    * @param regionName
    * @return Table name.

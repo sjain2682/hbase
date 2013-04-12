@@ -56,11 +56,16 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.UnknownScannerException;
 import org.apache.hadoop.hbase.client.HConnectionManager.HConnectable;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
+import org.apache.hadoop.hbase.client.mapr.AbstractHTable;
+import org.apache.hadoop.hbase.client.mapr.BaseTableMappingRules;
+import org.apache.hadoop.hbase.client.mapr.GenericHFactory;
+import org.apache.hadoop.hbase.client.mapr.TableMappingRulesFactory;
 import org.apache.hadoop.hbase.ipc.CoprocessorProtocol;
 import org.apache.hadoop.hbase.ipc.ExecRPCInvoker;
 import org.apache.hadoop.hbase.regionserver.RegionServerStoppedException;
 import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.Pair;
 
 /**
@@ -105,12 +110,17 @@ import org.apache.hadoop.hbase.util.Pair;
  * @see HConnectionManager
  */
 public class HTable implements HTableInterface, Closeable {
+  private static final GenericHFactory<AbstractHTable> tableFactory_ =
+      new GenericHFactory<AbstractHTable>();
+  private BaseTableMappingRules tableMappingRule_;
+  private final AbstractHTable maprTable_;
+
   private static final Log LOG = LogFactory.getLog(HTable.class);
   private HConnection connection;
-  private final byte [] tableName;
+  private byte [] tableName;
   protected int scannerTimeout;
   private volatile Configuration configuration;
-  private final ArrayList<Put> writeBuffer = new ArrayList<Put>();
+  private ArrayList<Put> writeBuffer = new ArrayList<Put>();
   private long writeBufferSize;
   private boolean clearBufferOnFail;
   private boolean autoFlush;
@@ -122,7 +132,7 @@ public class HTable implements HTableInterface, Closeable {
   private boolean closed;
   private int operationTimeout;
   private static final int DOPUT_WB_CHECK = 10;    // i.e., doPut checks the writebuffer every X Puts.
-  private final boolean cleanupOnClose; // close the connection in close()
+  private boolean cleanupOnClose; // close the connection in close()
 
   /**
    * Creates an object to access a HBase table.
@@ -185,7 +195,11 @@ public class HTable implements HTableInterface, Closeable {
    */
   public HTable(Configuration conf, final byte [] tableName)
   throws IOException {
-    this.tableName = tableName;
+    if ((maprTable_ = createdMapRTable(conf, tableName)) != null) {
+      return; // If it was a MapR table, our work is done
+    }
+
+    this.tableName = FSUtils.adjustTableName(tableName);
     this.cleanupOnClose = true;
     if (conf == null) {
       this.scannerTimeout = 0;
@@ -227,13 +241,18 @@ public class HTable implements HTableInterface, Closeable {
    */
   public HTable(final byte[] tableName, final HConnection connection, 
       final ExecutorService pool) throws IOException {
+    if ((maprTable_ = createdMapRTable(connection.getConfiguration(), tableName)) != null) {
+      // If it was a MapR table, our work is done
+      return;
+    }
+
     if (pool == null || pool.isShutdown()) {
       throw new IllegalArgumentException("Pool is null or shut down.");
     }
     if (connection == null || connection.isClosed()) {
       throw new IllegalArgumentException("Connection is null or closed.");
     }
-    this.tableName = tableName;
+    this.tableName = FSUtils.adjustTableName(tableName);
     this.cleanupOnClose = false;
     this.connection = connection;
     this.configuration = connection.getConfiguration();
@@ -271,6 +290,33 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * Tests if the table identified by tableName should be considered
+   * as a MapR table according to table mapping rules and if yes 
+   * create a MapR table instance
+   *
+   * @param conf
+   * @param tableName
+   * @return true if this is a MapR table
+   * @throws IOException
+   */
+  private AbstractHTable createdMapRTable(Configuration conf,
+      byte[] tableName) throws IOException {
+    tableMappingRule_ = TableMappingRulesFactory.create(conf);
+    if (tableMappingRule_.isMapRTable(tableName)) {
+      try {
+        configuration = conf;
+        return tableFactory_.getImplementorInstance(
+          configuration.get("htable.impl.mapr", "com.mapr.fs.HTableImpl"),
+          new Object[] {conf, tableName},
+          new Class[] {Configuration.class, byte[].class});
+      } catch (Throwable e) {
+        GenericHFactory.handleIOException(e);
+      }
+    }
+    return null;
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
@@ -279,6 +325,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>Return <code>true</code> for MapR Tables.</b><p>
    * Tells whether or not a table is enabled or not.
    * @param tableName Name of table to check.
    * @return {@code true} if table is online.
@@ -291,6 +338,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>Return <code>true</code> for MapR Tables.</b><p>
    * Tells whether or not a table is enabled or not.
    * @param tableName Name of table to check.
    * @return {@code true} if table is online.
@@ -303,6 +351,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>Return <code>true</code> for MapR Tables.</b><p>
    * Tells whether or not a table is enabled or not.
    * @param conf The Configuration object to use.
    * @param tableName Name of table to check.
@@ -317,6 +366,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>Return <code>true</code> for MapR Tables.</b><p>
    * Tells whether or not a table is enabled or not.
    * @param conf The Configuration object to use.
    * @param tableName Name of table to check.
@@ -325,10 +375,13 @@ public class HTable implements HTableInterface, Closeable {
    */
   public static boolean isTableEnabled(Configuration conf,
       final byte[] tableName) throws IOException {
+    if (TableMappingRulesFactory.create(conf).isMapRTable(tableName)) {
+      return true;
+    }
     return HConnectionManager.execute(new HConnectable<Boolean>(conf) {
       @Override
       public Boolean connect(HConnection connection) throws IOException {
-        return connection.isTableEnabled(tableName);
+        return connection.isTableEnabled(FSUtils.adjustTableName(tableName));
       }
     });
   }
@@ -341,6 +394,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   public HRegionLocation getRegionLocation(final String row)
   throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.getRegionLocation(row);
+    }
     return connection.getRegionLocation(tableName, Bytes.toBytes(row), false);
   }
 
@@ -353,6 +409,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   public HRegionLocation getRegionLocation(final byte [] row)
   throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.getRegionLocation(row);
+    }
     return connection.getRegionLocation(tableName, row, false);
   }
 
@@ -366,6 +425,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   public HRegionLocation getRegionLocation(final byte [] row, boolean reload)
   throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.getRegionLocation(row, reload);
+    }
     return connection.getRegionLocation(tableName, row, reload);
   }
      
@@ -374,10 +436,14 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public byte [] getTableName() {
+    if (maprTable_ != null) {
+      return maprTable_.getTableName();
+    }
     return this.tableName;
   }
 
   /**
+   * <b>Return <code>null</code> for MapR Tables.</b><p>
    * <em>INTERNAL</em> Used by unit tests and tools to do low-level
    * manipulations.
    * @return An HConnection instance.
@@ -389,6 +455,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>NO-OP for MapR Tables.</b><p>
    * Gets the number of rows that a scanner will fetch at once.
    * <p>
    * The default value comes from {@code hbase.client.scanner.caching}.
@@ -398,6 +465,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>NO-OP for MapR Tables.</b><p>
    * Sets the number of rows that a scanner will fetch at once.
    * <p>
    * This will override the value specified by
@@ -416,6 +484,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public HTableDescriptor getTableDescriptor() throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.getTableDescriptor();
+    }
     return new UnmodifyableHTableDescriptor(
       this.connection.getHTableDescriptor(this.tableName));
   }
@@ -428,6 +499,9 @@ public class HTable implements HTableInterface, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   public byte [][] getStartKeys() throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.getStartKeys();
+    }
     return getStartEndKeys().getFirst();
   }
 
@@ -439,6 +513,9 @@ public class HTable implements HTableInterface, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   public byte[][] getEndKeys() throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.getEndKeys();
+    }
     return getStartEndKeys().getSecond();
   }
 
@@ -452,6 +529,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   @SuppressWarnings("unchecked")
   public Pair<byte[][],byte[][]> getStartEndKeys() throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.getStartEndKeys();
+    }
     NavigableMap<HRegionInfo, ServerName> regions = getRegionLocations();
     final List<byte[]> startKeyList = new ArrayList<byte[]>(regions.size());
     final List<byte[]> endKeyList = new ArrayList<byte[]>(regions.size());
@@ -499,6 +579,9 @@ public class HTable implements HTableInterface, Closeable {
    * @throws IOException if a remote or network exception occurs
    */
   public NavigableMap<HRegionInfo, ServerName> getRegionLocations() throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.getRegionLocations();
+    }
     return MetaScanner.allTableRegions(getConfiguration(), getTableName(), false);
   }
 
@@ -532,6 +615,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>NO-OP for MapR Tables.</b><p>
    * Save the passed region information and the table's regions
    * cache.
    * <p>
@@ -554,6 +638,9 @@ public class HTable implements HTableInterface, Closeable {
    * to region cache.
    */
   public void prewarmRegionCache(Map<HRegionInfo, HServerAddress> regionMap) {
+    if (maprTable_ != null) {
+      return;
+    }
     this.connection.prewarmRegionCache(this.getTableName(), regionMap);
   }
 
@@ -626,6 +713,9 @@ public class HTable implements HTableInterface, Closeable {
    @Override
    public Result getRowOrBefore(final byte[] row, final byte[] family)
    throws IOException {
+     if (maprTable_ != null) {
+       return maprTable_.getRowOrBefore(row, family);
+     }
      return connection.getRegionServerWithRetries(
          new ServerCallable<Result>(connection, tableName, row, operationTimeout) {
        public Result call() throws IOException {
@@ -640,6 +730,9 @@ public class HTable implements HTableInterface, Closeable {
     */
   @Override
   public ResultScanner getScanner(final Scan scan) throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.getScanner(scan);
+    }
     ClientScanner s = new ClientScanner(scan);
     s.initialize();
     return s;
@@ -671,6 +764,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public Result get(final Get get) throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.get(get);
+    }
     return connection.getRegionServerWithRetries(
         new ServerCallable<Result>(connection, tableName, get.getRow(), operationTimeout) {
           public Result call() throws IOException {
@@ -685,6 +781,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public Result[] get(List<Get> gets) throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.get(gets);
+    }
     try {
       Object [] r1 = batch((List)gets);
 
@@ -708,6 +807,10 @@ public class HTable implements HTableInterface, Closeable {
   @Override
   public synchronized void batch(final List<Row> actions, final Object[] results)
       throws InterruptedException, IOException {
+    if (maprTable_ != null) {
+      maprTable_.batch(actions, results);
+      return;
+    }
     connection.processBatch(actions, tableName, pool, results);
   }
 
@@ -716,6 +819,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public synchronized Object[] batch(final List<Row> actions) throws InterruptedException, IOException {
+    if (maprTable_ != null) {
+      return maprTable_.batch(actions);
+    }
     Object[] results = new Object[actions.size()];
     connection.processBatch(actions, tableName, pool, results);
     return results;
@@ -727,6 +833,10 @@ public class HTable implements HTableInterface, Closeable {
   @Override
   public void delete(final Delete delete)
   throws IOException {
+    if (maprTable_ != null) {
+      maprTable_.delete(delete);
+      return;
+    }
     connection.getRegionServerWithRetries(
         new ServerCallable<Boolean>(connection, tableName, delete.getRow(), operationTimeout) {
           public Boolean call() throws IOException {
@@ -743,6 +853,10 @@ public class HTable implements HTableInterface, Closeable {
   @Override
   public void delete(final List<Delete> deletes)
   throws IOException {
+    if (maprTable_ != null) {
+      maprTable_.delete(deletes);
+      return;
+    }
     Object[] results = new Object[deletes.size()];
     try {
       connection.processBatch((List) deletes, tableName, pool, results);
@@ -766,6 +880,10 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public void put(final Put put) throws IOException {
+    if (maprTable_ != null) {
+      maprTable_.put(put);
+      return;
+    }
     doPut(Arrays.asList(put));
   }
 
@@ -774,6 +892,10 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public void put(final List<Put> puts) throws IOException {
+    if (maprTable_ != null) {
+      maprTable_.put(puts);
+      return;
+    }
     doPut(puts);
   }
 
@@ -795,6 +917,13 @@ public class HTable implements HTableInterface, Closeable {
     }
   }
 
+  public Result append(Append a) throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.append(a);
+    }
+    return null;
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -803,6 +932,9 @@ public class HTable implements HTableInterface, Closeable {
     if (!increment.hasFamilies()) {
       throw new IOException(
           "Invalid arguments to increment, no columns specified");
+    }
+    if (maprTable_ != null) {
+      return maprTable_.increment(increment);
     }
     return connection.getRegionServerWithRetries(
         new ServerCallable<Result>(connection, tableName, increment.getRow(), operationTimeout) {
@@ -841,6 +973,9 @@ public class HTable implements HTableInterface, Closeable {
       throw new IOException(
           "Invalid arguments to incrementColumnValue", npe);
     }
+    if (maprTable_ != null) {
+      return maprTable_.incrementColumnValue(row, family, qualifier, amount, writeToWAL);
+    }
     return connection.getRegionServerWithRetries(
         new ServerCallable<Long>(connection, tableName, row, operationTimeout) {
           public Long call() throws IOException {
@@ -860,6 +995,9 @@ public class HTable implements HTableInterface, Closeable {
       final byte [] family, final byte [] qualifier, final byte [] value,
       final Put put)
   throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.checkAndPut(row, family, qualifier, value, put);
+    }
     return connection.getRegionServerWithRetries(
         new ServerCallable<Boolean>(connection, tableName, row, operationTimeout) {
           public Boolean call() throws IOException {
@@ -879,6 +1017,9 @@ public class HTable implements HTableInterface, Closeable {
       final byte [] family, final byte [] qualifier, final byte [] value,
       final Delete delete)
   throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.checkAndDelete(row, family, qualifier, value, delete);
+    }
     return connection.getRegionServerWithRetries(
         new ServerCallable<Boolean>(connection, tableName, row, operationTimeout) {
           public Boolean call() throws IOException {
@@ -896,6 +1037,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public boolean exists(final Get get) throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.exists(get);
+    }
     return connection.getRegionServerWithRetries(
         new ServerCallable<Boolean>(connection, tableName, get.getRow(), operationTimeout) {
           public Boolean call() throws IOException {
@@ -911,6 +1055,10 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public void flushCommits() throws IOException {
+    if (maprTable_ != null) {
+      maprTable_.flushCommits();
+      return;
+    }
     try {
       Object[] results = new Object[writeBuffer.size()];
       try {
@@ -948,6 +1096,10 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public void close() throws IOException {
+    if (maprTable_ != null) {
+      maprTable_.close();
+      return;
+    }
     if (this.closed) {
       return;
     }
@@ -978,11 +1130,15 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>NO-OP for MapR Tables.</b><p>
    * {@inheritDoc}
    */
   @Override
   public RowLock lockRow(final byte [] row)
   throws IOException {
+    if (maprTable_ != null) {
+      return maprTable_.lockRow(row);
+    }
     return connection.getRegionServerWithRetries(
       new ServerCallable<RowLock>(connection, tableName, row, operationTimeout) {
         public RowLock call() throws IOException {
@@ -995,11 +1151,16 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>NO-OP for MapR Tables.</b><p>
    * {@inheritDoc}
    */
   @Override
   public void unlockRow(final RowLock rl)
   throws IOException {
+    if (maprTable_ != null) {
+      maprTable_.unlockRow(rl);
+      return;
+    }
     connection.getRegionServerWithRetries(
       new ServerCallable<Boolean>(connection, tableName, rl.getRow(), operationTimeout) {
         public Boolean call() throws IOException {
@@ -1016,6 +1177,9 @@ public class HTable implements HTableInterface, Closeable {
    */
   @Override
   public boolean isAutoFlush() {
+    if (maprTable_ != null) {
+      return maprTable_.isAutoFlush();
+    }
     return autoFlush;
   }
 
@@ -1057,11 +1221,16 @@ public class HTable implements HTableInterface, Closeable {
    * @see #flushCommits
    */
   public void setAutoFlush(boolean autoFlush, boolean clearBufferOnFail) {
+    if (maprTable_ != null) {
+      maprTable_.setAutoFlush(autoFlush, clearBufferOnFail);
+      return;
+    }
     this.autoFlush = autoFlush;
     this.clearBufferOnFail = autoFlush || clearBufferOnFail;
   }
 
   /**
+   * <b>Return <code>0</code> for MapR Tables.</b><p>
    * Returns the maximum size in bytes of the write buffer for this HTable.
    * <p>
    * The default value comes from the configuration parameter
@@ -1069,10 +1238,15 @@ public class HTable implements HTableInterface, Closeable {
    * @return The size of the write buffer in bytes.
    */
   public long getWriteBufferSize() {
+    if (maprTable_ != null) {
+      LOG.warn("getWriteBufferSize() called for a MapR Table, returning 0.");
+      return 0;
+    }
     return writeBufferSize;
   }
 
   /**
+   * <b>NO-OP for MapR Tables.</b><p>
    * Sets the size of the buffer in bytes.
    * <p>
    * If the new size is less than the current amount of data in the
@@ -1081,6 +1255,10 @@ public class HTable implements HTableInterface, Closeable {
    * @throws IOException if a remote or network exception occurs.
    */
   public void setWriteBufferSize(long writeBufferSize) throws IOException {
+    if (maprTable_ != null) {
+      LOG.warn("setWriteBufferSize() called for a MapR Table, silently ignoring.");
+      return;
+    }
     this.writeBufferSize = writeBufferSize;
     if(currentWriteBufferSize > writeBufferSize) {
       flushCommits();
@@ -1088,10 +1266,14 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>Return <code>null</code> for MapR Tables.</b><p>
    * Returns the write buffer.
    * @return The current write buffer.
    */
   public ArrayList<Put> getWriteBuffer() {
+    if (maprTable_ != null) {
+      return null;
+    }
     return writeBuffer;
   }
 
@@ -1408,6 +1590,9 @@ public class HTable implements HTableInterface, Closeable {
    * @return the pool used for mutli
    */
   ExecutorService getPool() {
+    if (maprTable_ != null) {
+      return null;
+    }
     return this.pool;
   }
 
@@ -1441,6 +1626,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>NO-OP for MapR Tables.</b><p>
    * Enable or disable region cache prefetch for the table. It will be
    * applied for the given table's all HTable instances who share the same
    * connection. By default, the cache prefetch is enabled.
@@ -1451,6 +1637,10 @@ public class HTable implements HTableInterface, Closeable {
    */
   public static void setRegionCachePrefetch(final byte[] tableName,
       final boolean enable) throws IOException {
+    if (TableMappingRulesFactory.create(
+      HBaseConfiguration.create()).isMapRTable(tableName)) {
+      return;
+    }
     HConnectionManager.execute(new HConnectable<Void>(HBaseConfiguration
         .create()) {
       @Override
@@ -1462,6 +1652,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>NO-OP for MapR Tables.</b><p>
    * Enable or disable region cache prefetch for the table. It will be
    * applied for the given table's all HTable instances who share the same
    * connection. By default, the cache prefetch is enabled.
@@ -1473,6 +1664,10 @@ public class HTable implements HTableInterface, Closeable {
    */
   public static void setRegionCachePrefetch(final Configuration conf,
       final byte[] tableName, final boolean enable) throws IOException {
+    if (TableMappingRulesFactory.create(
+      HBaseConfiguration.create()).isMapRTable(tableName)) {
+      return;
+    }
     HConnectionManager.execute(new HConnectable<Void>(conf) {
       @Override
       public Void connect(HConnection connection) throws IOException {
@@ -1483,6 +1678,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>Return <code>false</code> for MapR Tables.</b><p>
    * Check whether region cache prefetch is enabled or not for the table.
    * @param conf The Configuration object to use.
    * @param tableName name of table to check
@@ -1492,6 +1688,10 @@ public class HTable implements HTableInterface, Closeable {
    */
   public static boolean getRegionCachePrefetch(final Configuration conf,
       final byte[] tableName) throws IOException {
+    if (TableMappingRulesFactory.create(
+      HBaseConfiguration.create()).isMapRTable(tableName)) {
+      return false;
+    }
     return HConnectionManager.execute(new HConnectable<Boolean>(conf) {
       @Override
       public Boolean connect(HConnection connection) throws IOException {
@@ -1501,6 +1701,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>Return <code>false</code> for MapR Tables.</b><p>
    * Check whether region cache prefetch is enabled or not for the table.
    * @param tableName name of table to check
    * @return true if table's region cache prefecth is enabled. Otherwise
@@ -1508,6 +1709,10 @@ public class HTable implements HTableInterface, Closeable {
    * @throws IOException
    */
   public static boolean getRegionCachePrefetch(final byte[] tableName) throws IOException {
+    if (TableMappingRulesFactory.create(
+      HBaseConfiguration.create()).isMapRTable(tableName)) {
+      return false;
+    }
     return HConnectionManager.execute(new HConnectable<Boolean>(
         HBaseConfiguration.create()) {
       @Override
@@ -1518,19 +1723,28 @@ public class HTable implements HTableInterface, Closeable {
  }
 
   /**
+   * <b>NO-OP for MapR Tables</b><p>
    * Explicitly clears the region cache to fetch the latest value from META.
    * This is a power user function: avoid unless you know the ramifications.
    */
   public void clearRegionCache() {
+    if (maprTable_ != null) {
+      maprTable_.clearRegionCache();
+      return;
+    }
     this.connection.clearRegionCache();
   }
 
   /**
+   * <b>NO-OP for MapR Tables, returns <code>null</code>.</b><p>
    * {@inheritDoc}
    */
   @Override
   public <T extends CoprocessorProtocol> T coprocessorProxy(
       Class<T> protocol, byte[] row) {
+    if (maprTable_ != null) {
+      return null;
+    }
     return (T)Proxy.newProxyInstance(this.getClass().getClassLoader(),
         new Class[]{protocol},
         new ExecRPCInvoker(configuration,
@@ -1541,6 +1755,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>NO-OP for MapR Tables, returns <code>null</code>.</b><p>
    * {@inheritDoc}
    */
   @Override
@@ -1548,7 +1763,9 @@ public class HTable implements HTableInterface, Closeable {
       Class<T> protocol, byte[] startKey, byte[] endKey,
       Batch.Call<T,R> callable)
       throws IOException, Throwable {
-
+    if (maprTable_ != null) {
+      return null;
+    }
     final Map<byte[],R> results =  Collections.synchronizedMap(new TreeMap<byte[],R>(
         Bytes.BYTES_COMPARATOR));
     coprocessorExec(protocol, startKey, endKey, callable,
@@ -1561,6 +1778,7 @@ public class HTable implements HTableInterface, Closeable {
   }
 
   /**
+   * <b>NO-OP for MapR Tables, returns <code>null</code>.</b><p>
    * {@inheritDoc}
    */
   @Override
@@ -1568,6 +1786,9 @@ public class HTable implements HTableInterface, Closeable {
       Class<T> protocol, byte[] startKey, byte[] endKey,
       Batch.Call<T,R> callable, Batch.Callback<R> callback)
       throws IOException, Throwable {
+    if (maprTable_ != null) {
+      return;
+    }
 
     // get regions covered by the row range
     List<byte[]> keys = getStartKeysInRange(startKey, endKey);
@@ -1606,11 +1827,25 @@ public class HTable implements HTableInterface, Closeable {
     return rangeKeys;
   }
 
+  /**
+   * <b>NO-OP for MapR Tables.</b><p>
+   * @param operationTimeout
+   */
   public void setOperationTimeout(int operationTimeout) {
+    if (maprTable_ != null) {
+      maprTable_.setOperationTimeout(operationTimeout);
+      return;
+    }
     this.operationTimeout = operationTimeout;
   }
 
+  /**
+   * <b>Returns <code>0</code> for MapR Tables.</b><p>
+   */
   public int getOperationTimeout() {
+    if (maprTable_ != null) {
+      return maprTable_.getOperationTimeout();
+    }
     return operationTimeout;
   }
 

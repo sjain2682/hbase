@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,9 @@ import org.apache.hadoop.util.StringUtils;
  */
 public abstract class FSUtils {
   private static final Log LOG = LogFactory.getLog(FSUtils.class);
+
+  private static final String HBASE_URI_PREFIX = "hbase://";
+  private static final byte[] HBASE_URI_PREFIX_BYTES = Bytes.toBytes(HBASE_URI_PREFIX);
 
   protected FSUtils() {
     super();
@@ -1086,5 +1090,30 @@ public abstract class FSUtils {
     }
     if (status == null || status.length < 1) return null;
     return status;
+  }
+
+  public static String adjustTableNameString(String tableName) {
+    return tableName.startsWith(HBASE_URI_PREFIX)
+        ? tableName.substring(tableName.lastIndexOf('/')+1)
+            : tableName;
+  }
+
+  public static byte[] adjustTableName(String tableName) {
+    return adjustTableName(Bytes.toBytes(tableName));
+  }
+
+  public static byte[] adjustTableName(byte[] tableName) {
+    if(Bytes.startsWith(tableName, HBASE_URI_PREFIX_BYTES)) {
+      int i = tableName.length-1;
+      for (; i >= HBASE_URI_PREFIX_BYTES.length; i--) {
+        if (tableName[i] == '/') {
+          break;
+        }
+      }
+      return Arrays.copyOfRange(tableName, i+1, tableName.length);
+    }
+    else {
+      return tableName.clone();
+    }
   }
 }

@@ -29,17 +29,26 @@ module Hbase
 
     def initialize(configuration, formatter)
       @admin = org.apache.hadoop.hbase.client.HBaseAdmin.new(configuration)
-      connection = @admin.getConnection()
-      @zk_wrapper = connection.getZooKeeperWatcher()
-      zk = @zk_wrapper.getRecoverableZooKeeper().getZooKeeper()
-      @zk_main = org.apache.zookeeper.ZooKeeperMain.new(zk)
+      @conf = configuration
       @formatter = formatter
+      @zk_wrapper = nil
+    end
+    
+    def zkInit()
+      if @zk_wrapper == nil
+        connection = @admin.getConnection()
+        if connection != nil
+          @zk_wrapper = connection.getZooKeeperWatcher()
+          return true
+        end
+      end
+      return false
     end
 
     #----------------------------------------------------------------------------------------------
     # Returns a list of tables in hbase
-    def list
-      @admin.listTables.map { |t| t.getNameAsString }
+    def list(path = ".*")
+        @admin.listTables(path).map { |t| t.getNameAsString }
     end
 
     #----------------------------------------------------------------------------------------------
@@ -152,7 +161,11 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Returns ZooKeeper status dump
     def zk_dump
-      org.apache.hadoop.hbase.zookeeper.ZKUtil::dump(@zk_wrapper)
+      if zkInit
+        org.apache.hadoop.hbase.zookeeper.ZKUtil::dump(@zk_wrapper)
+      else
+        puts "Could not connect to HBase service"
+      end
     end
 
     #----------------------------------------------------------------------------------------------
@@ -245,14 +258,14 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Returns table's structure description
     def describe(table_name)
-      tables = @admin.listTables.to_a
-      tables << org.apache.hadoop.hbase.HTableDescriptor::META_TABLEDESC
-      tables << org.apache.hadoop.hbase.HTableDescriptor::ROOT_TABLEDESC
+      t = org.apache.hadoop.hbase.HTableDescriptor::ROOT_TABLEDESC
+      return t.to_s if t.getNameAsString == table_name
 
-      tables.each do |t|
-        # Found the table
-        return t.to_s if t.getNameAsString == table_name
-      end
+      t = org.apache.hadoop.hbase.HTableDescriptor::META_TABLEDESC
+      return t.to_s if t.getNameAsString == table_name
+
+      t = @admin.getTableDescriptor(table_name.to_java_bytes)
+      return t.to_s if t.getNameAsString != nil
 
       raise(ArgumentError, "Failed to find table named #{table_name}")
     end
@@ -490,6 +503,10 @@ module Hbase
     #
     # Helper methods
     #
+
+    def getConnection
+      @admin.getConnection
+    end
 
     # Does table exist?
     def exists?(table_name)
