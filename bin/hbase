@@ -290,6 +290,9 @@ fi
 
 # figure out which class to run
 if [ "$COMMAND" = "shell" ] ; then
+  # send hbase shell log messages to the log file
+  export HBASE_LOGFILE="hbase-`whoami`-shell-$HOSTNAME.log"
+  export HBASE_ROOT_LOGGER="INFO,DRFA"
   CLASS="org.jruby.Main -X+O ${HBASE_HOME}/bin/hirb.rb"
 elif [ "$COMMAND" = "hbck" ] ; then
   CLASS='org.apache.hadoop.hbase.util.HBaseFsck'
