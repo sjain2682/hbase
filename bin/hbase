@@ -211,11 +211,6 @@ if [ ! -z $HBASE_MAPR_EXTRA_JARS ]; then
   CLASSPATH=${CLASSPATH}:${HBASE_MAPR_EXTRA_JARS}
 fi
 
-# Add user-specified CLASSPATH last
-if [ "$HBASE_CLASSPATH" != "" ]; then
-  CLASSPATH=${CLASSPATH}:${HBASE_CLASSPATH}
-fi
-
 # default log directory & file
 if [ "$HBASE_LOG_DIR" = "" ]; then
   HBASE_LOG_DIR="$HBASE_HOME/logs"
@@ -263,6 +258,11 @@ if [ -d "${HBASE_HOME}/build/native" -o -d "${HBASE_HOME}/lib/native" ]; then
   if [ -d "${HBASE_HOME}/lib/native" ]; then
     JAVA_LIBRARY_PATH=$(append_path "$JAVA_LIBRARY_PATH" ${HBASE_HOME}/lib/native/${JAVA_PLATFORM})
   fi
+fi
+
+# Add user-specified CLASSPATH last
+if [ "$HBASE_CLASSPATH" != "" ]; then
+  CLASSPATH=${CLASSPATH}:${HBASE_CLASSPATH}
 fi
 
 # cygwin path translation
