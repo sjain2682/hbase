@@ -27,8 +27,15 @@ env=${BASE_MAPR}/conf/env.sh
 # Set Hadoop home
 export HADOOP_HOME=${HADOOP_HOME:-$BASE_MAPR/hadoop/hadoop-0.20.2}
 
+# Set the user if not set in the environment
+if [ "$USER" = "" ]; then
+  HBASE_IDENT_STRING=`id -nu`
+else
+  HBASE_IDENT_STRING="$USER"
+fi
+
 # Dump heap on OOM
-export HBASE_OPTS="$HBASE_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/cores/"
+HBASE_OPTS="$HBASE_OPTS -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/opt/cores/"
 
 # Add MapR file system and dependency jars. There are two sets of such jars
 # First set which override those found in HBase' lib folder, and is prepended
@@ -45,7 +52,6 @@ for jar in ${MAPR_JARS}; do
 done
 # Now remove any additional ':' and export the variable
 HBASE_MAPR_OVERRIDE_JARS="${HBASE_MAPR_OVERRIDE_JARS#:}"
-export HBASE_MAPR_OVERRIDE_JARS
 
 # Second set
 # JARs in ${BASE_MAPR}/lib
@@ -66,4 +72,5 @@ for jar in ${MAPR_JARS}; do
 done
 # Now remove any additional ':' and export the variable
 HBASE_MAPR_EXTRA_JARS="${HBASE_MAPR_EXTRA_JARS#:}"
-export HBASE_MAPR_EXTRA_JARS
+
+export HBASE_OPTS HBASE_MAPR_OVERRIDE_JARS HBASE_MAPR_EXTRA_JARS HBASE_IDENT_STRING
