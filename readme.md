@@ -47,7 +47,7 @@ $ mkdir 0.92.2-mapr
 $ cd 0.92.2-mapr
 $ git clone git://github.com/mapr/hbase.git .
 $ git checkout 0.92.2-mapr
-$ mvn clean install package -DskipTests -Dgenerate.mapr.patches
+$ mvn clean install package -DskipTests -Dgenerate.mapr.patches -P security
 ```
 
 The command line arguments `-DskipTests` and `-Dgenerate.mapr.patches` are optional
