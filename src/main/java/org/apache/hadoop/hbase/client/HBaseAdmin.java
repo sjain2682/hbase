@@ -84,6 +84,8 @@ import org.apache.hadoop.util.StringUtils;
  * example, an HBaseAdmin instance will not ride over a Master restart.
  */
 public class HBaseAdmin implements Abortable, Closeable {
+  public static final String HBASE_ADMIN_CONNECT_AT_CONSTRUCTION = "hbase.admin.connect.at.construction";
+
   private static final GenericHFactory<AbstractHBaseAdmin> adminFactory_ =
       new GenericHFactory<AbstractHBaseAdmin>();
   private static final AtomicBoolean balancer_ = new AtomicBoolean();
@@ -120,7 +122,7 @@ public class HBaseAdmin implements Abortable, Closeable {
    * will not be thrown if HBase services are unavailable<p>If your
    * application logic requires the connection to be established (and
    * exception be thrown) in the constructor, set 
-   * <code>hbase.admin.connect.at.constrcution</code> to <code>true</code>.<p>
+   * <code>hbase.admin.connect.at.construction</code> to <code>true</code>.<p>
    *
    * @param c Configuration object
    * @throws MasterNotRunningException if the master is not running
@@ -286,7 +288,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-    if (c.getBoolean("hbase.admin.connect.at.constrcution", false)) {
+    if (c.getBoolean(HBASE_ADMIN_CONNECT_AT_CONSTRUCTION, false)) {
       ensureConnectedToHBase();
     }
   }
@@ -1922,6 +1924,7 @@ public class HBaseAdmin implements Abortable, Closeable {
     } catch (IOException e) { throw new RuntimeException(e); }
     Configuration copyOfConf = HBaseConfiguration.create(conf);
     copyOfConf.setInt("hbase.client.retries.number", 1);
+    copyOfConf.setBoolean(HBASE_ADMIN_CONNECT_AT_CONSTRUCTION, true);
     HBaseAdmin admin = new HBaseAdmin(copyOfConf);
     try {
       admin.close();
