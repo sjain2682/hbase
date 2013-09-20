@@ -36,7 +36,8 @@
   import="org.apache.hadoop.hbase.util.Bytes"
   import="org.apache.hadoop.hbase.util.FSUtils"
   import="java.util.Map"
-  import="org.apache.hadoop.hbase.HConstants"%><%
+  import="org.apache.hadoop.hbase.HConstants"
+  import="org.apache.hadoop.hbase.util.WebUtils"%><%
   HMaster master = (HMaster)getServletContext().getAttribute(HMaster.MASTER);
   Configuration conf = master.getConfiguration();
   HBaseAdmin hbadmin = new HBaseAdmin(conf);
@@ -113,7 +114,7 @@
 %>
 <%= tableHeader %>
 <%
-  String url = "http://" + rl.getHostname() + ":" + infoPort + "/";
+  String url = WebUtils.getHttpUrlScheme() + rl.getHostname() + ":" + infoPort + "/";
 %>
 <tr>
   <td><%= tableName %></td>
@@ -132,7 +133,7 @@
   HRegionInfo meta = HRegionInfo.FIRST_META_REGIONINFO;
   ServerName metaLocation = master.getCatalogTracker().getMetaLocation();
   for (int i = 0; i < 1; i++) {
-    String url = "http://" + metaLocation.getHostname() + ":" + infoPort + "/";
+    String url = WebUtils.getHttpUrlScheme() + metaLocation.getHostname() + ":" + infoPort + "/";
 %>
 <tr>
   <td><%= meta.getRegionNameAsString() %></td>
@@ -189,7 +190,7 @@
         }
         // This port might be wrong if RS actually ended up using something else.
         urlRegionServer =
-            "http://" + addr.getHostname().toString() + ":" + infoPort + "/";
+            WebUtils.getHttpUrlScheme() + addr.getHostname().toString() + ":" + infoPort + "/";
         Integer i = regDistribution.get(urlRegionServer);
         if (null == i) i = new Integer(0);
         regDistribution.put(urlRegionServer, i+1);
