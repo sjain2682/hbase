@@ -706,7 +706,7 @@ public class ZKUtil {
     // this more like Hadoop and build a JaaS configuration programmatically
     // based on a site conf setting. The scope of such a change will be
     // addressed in HBASE-4791.
-    return (System.getProperty("java.security.auth.login.config") != null);
+    return "kerberos".equalsIgnoreCase(conf.get("hbase.security.authentication"));
   }
 
   private static ArrayList<ACL> createACL(ZooKeeperWatcher zkw, String node) {
