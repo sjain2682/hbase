@@ -36,7 +36,7 @@
   <groupId>org.apache.hbase</groupId>
   <artifactId>hbase</artifactId>
   <packaging>jar</packaging>
-  <version>0.94.13-mapr-1312-SNAPSHOT</version>
+  <version>0.94.13-mapr-1401</version>
   <name>HBase</name>
   <description>
     HBase is the &amp;lt;a href="http://hadoop.apache.org"&amp;rt;Hadoop&lt;/a&amp;rt; database. Use it when you need
@@ -975,7 +975,7 @@
     <!-- This should be set to the Apache Github tag this release is based upon -->
     <apache.git.tag>0.94.13</apache.git.tag>
     <!-- Latest version of Hadoop distributed with MapR -->
-    <mapr.hadoop.version>1.0.3-mapr-3.1.0-SNAPSHOT</mapr.hadoop.version>
+    <mapr.hadoop.version>1.0.3-mapr-3.1.0</mapr.hadoop.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
@@ -1005,7 +1005,7 @@
     <protobuf.version>2.4.0a</protobuf.version>
     <stax-api.version>1.0.1</stax-api.version>
     <thrift.version>0.8.0</thrift.version>
-    <zookeeper.version>3.4.5-mapr-SNAPSHOT</zookeeper.version>
+    <zookeeper.version>3.4.5-mapr-1401</zookeeper.version>
     <hadoop-snappy.version>0.0.1-SNAPSHOT</hadoop-snappy.version>
     <clover.version>2.6.3</clover.version>
 
