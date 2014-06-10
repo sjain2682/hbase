@@ -16,6 +16,7 @@ Need exactly five args: the HBase version, the full mapr-hbase version, the shor
 Example param 1
  - 0.94.13-mapr-1401
  - 0.94.17-mapr-1403
+ - 0.94.17-mapr-1405
 
 Example param 2
  - 1.0.3-mapr-3.1.0
