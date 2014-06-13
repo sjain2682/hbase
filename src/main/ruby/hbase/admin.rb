@@ -215,8 +215,8 @@ module Hbase
     #----------------------------------------------------------------------------------------------
     # Check if bulkload option needs to be added to the descriptor.
     # Caller ensures that arg[BULKLOAD] exists in the command line.
-    def check_bulkload(table_name, arg, htd)
-      if is_mapr_table?(table_name)
+    def check_bulkload(arg, htd)
+      if is_mapr_table?(htd.getNameAsString())
         raise(ArgumentError, "Bulkload value must be of type String") unless arg[BULKLOAD].kind_of?(String)
         raise(ArgumentError, "Bulkload value can be 'true' or 'false' only.") unless arg[BULKLOAD].capitalize == 'False' or arg[BULKLOAD].capitalize == 'True'
         htd.setValue(BULKLOAD, arg[BULKLOAD])
@@ -322,7 +322,7 @@ module Hbase
               end
             end
             if (arg[BULKLOAD])
-              check_bulkload(table_name, arg, htd)
+              check_bulkload(arg, htd)
             end
           elsif (arg.has_key?(BULKLOAD))
             # disallow CF creation with bulkload in same hash set
@@ -330,7 +330,7 @@ module Hbase
               disallow_bulkload("ColFam")
             end
             # (3) bulkload - only for M7 tables
-            check_bulkload(table_name, arg, htd)
+            check_bulkload(arg, htd)
           else
             # (4) column family spec
 
@@ -339,7 +339,6 @@ module Hbase
               disallow_bulkload("ColFam");
             end
 
-            descriptor = hcd(arg, htd)
             htd.setValue(COMPRESSION_COMPACT, arg[COMPRESSION_COMPACT]) if arg[COMPRESSION_COMPACT]
             htd.addFamily(hcd(arg, htd))
           end
@@ -482,7 +481,7 @@ module Hbase
           # Note that we handle BULKLOAD similar to OWNER. Anything else after
           # is ignored.
           if arg[BULKLOAD]
-            check_bulkload(table_name, arg, htd)
+            check_bulkload(arg, htd)
             @admin.modifyTable(table_name.to_java_bytes, htd)
             return
           end
@@ -522,7 +521,7 @@ module Hbase
           end
 
           if arg[BULKLOAD]
-            check_bulkload(table_name, arg, htd)
+            check_bulkload(arg, htd)
           end
 
           next
@@ -536,7 +535,7 @@ module Hbase
           htd.setDeferredLogFlush(JBoolean.valueOf(arg[DEFERRED_LOG_FLUSH])) if arg[DEFERRED_LOG_FLUSH]
 
           if arg[BULKLOAD]
-            check_bulkload(table_name, arg, htd)
+            check_bulkload(arg, htd)
           end
 
           # (2) Here, we handle the alternate syntax of ownership setting, where method => 'table_att' is specified.
@@ -592,7 +591,7 @@ module Hbase
           if arg.kind_of?(Hash)
             if (!arg[NAME])
               if arg[BULKLOAD]
-                check_bulkload(table_name, arg, htd)
+                check_bulkload(arg, htd)
               end
               next
             end
@@ -608,7 +607,7 @@ module Hbase
           end
 
           if arg[BULKLOAD]
-            check_bulkload(table_name, arg, htd)
+            check_bulkload(arg, htd)
           end
 
           next
@@ -729,9 +728,41 @@ module Hbase
       end
       if arg.include?(org.apache.hadoop.hbase.HColumnDescriptor::COMPRESSION)
         compression = arg[org.apache.hadoop.hbase.HColumnDescriptor::COMPRESSION].upcase
-        unless org.apache.hadoop.hbase.io.hfile.Compression::Algorithm.constants.include?(compression)      
-          raise(ArgumentError, "Compression #{compression} is not supported. Use one of " + org.apache.hadoop.hbase.io.hfile.Compression::Algorithm.constants.join(" ")) 
-        else 
+        if is_mapr_table?(htd.getNameAsString())
+          # Keeping SNAPPY to be backward compatible
+          if (compression == 'SNAPPY')
+            puts "SNAPPY is treated as LZ4"
+            compression = 'LZ4'
+          end
+          incl = com.mapr.fs.SchemaHelper::Compression.constants.include?(compression)
+        else
+          incl = org.apache.hadoop.hbase.io.hfile.Compression::Algorithm.constants.include?(compression)
+        end
+        unless incl
+          if is_mapr_table?(htd.getNameAsString())
+            raise(ArgumentError, "Compression #{compression} is not supported. Use one of " + com.mapr.fs.SchemaHelper::Compression.constants.join(" ") + ".")
+          else
+            raise(ArgumentError, "Compression #{compression} is not supported. Use one of " + org.apache.hadoop.hbase.io.hfile.Compression::Algorithm.constants.join(" ") + ".")
+          end
+        else
+          # Match the compression to hbase version (same is done in java code)
+          # Better way to do this??
+          if (compression == 'LZF')
+            puts "LZF is treated as LZ4"
+            compression = 'LZ4'
+          end
+          if (compression == 'ZLIB')
+            puts "ZLIB is treated as GZ"
+            compression = 'GZ'
+          end
+          if (compression == 'LZO')
+            puts "LZO is treated as LZ4"
+            compression = 'LZ4'
+          end
+          if (compression == 'OFF')
+            puts "OFF is treated as NONE"
+            compression = 'NONE'
+          end
           family.setCompressionType(org.apache.hadoop.hbase.io.hfile.Compression::Algorithm.valueOf(compression))
         end
       end
