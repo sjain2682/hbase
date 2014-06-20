@@ -51,6 +51,8 @@ import org.apache.hadoop.hbase.snapshot.SnapshotCreationException;
 import org.apache.hadoop.hbase.snapshot.UnknownSnapshotException;
 import org.apache.hadoop.hbase.util.Pair;
 
+import com.google.protobuf.ServiceException;
+
 /**
  * The administrative API for HBase. Obtain an instance from an {@link Connection#getAdmin()} and
  * call {@link #close()} afterwards.
@@ -713,21 +715,24 @@ public interface Admin extends Abortable, Closeable {
    *
    * @param enable if true enables the catalog janitor
    * @return the previous state
+   * @throws ServiceException 
    */
-  boolean enableCatalogJanitor(boolean enable) throws IOException;
+  boolean enableCatalogJanitor(boolean enable) throws IOException, ServiceException;
 
   /**
    * Ask for a scan of the catalog table
    *
    * @return the number of entries cleaned
+   * @throws ServiceException 
    */
-  int runCatalogScan() throws IOException;
+  int runCatalogScan() throws IOException, ServiceException;
 
   /**
    * Query on the catalog janitor state (Enabled/Disabled?)
+ * @throws ServiceException 
    *
    */
-  boolean isCatalogJanitorEnabled() throws IOException;
+  boolean isCatalogJanitorEnabled() throws IOException, ServiceException;
 
   /**
    * Merge two regions. Asynchronous operation.
