@@ -109,6 +109,7 @@ import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.security.token.AuthenticationTokenSecretManager;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Counter;
+import org.apache.hadoop.hbase.util.JVM;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -1407,6 +1408,7 @@ public class RpcServer implements RpcServerInterface {
           }
           replyToken = saslServer.evaluateResponse(saslToken);
         } catch (IOException e) {
+          JVM.INSTANCE.checkJCEKeyStrength();
           IOException sendToClient = e;
           Throwable cause = e;
           while (cause != null) {
