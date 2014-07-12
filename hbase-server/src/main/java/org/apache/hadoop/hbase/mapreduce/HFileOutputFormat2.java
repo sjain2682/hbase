@@ -472,7 +472,7 @@ public class HFileOutputFormat2
         KeyValueSerialization.class.getName());
 
     // Remember the tablePath in jobConf
-    String tableName = Bytes.toString(table.getTableName());
+    String tableName = tableDescriptor.getTableName().getNameAsString();
     configureMapRTablePath(job, tableName);
 
     // Use table's region boundaries for TOP split points.
