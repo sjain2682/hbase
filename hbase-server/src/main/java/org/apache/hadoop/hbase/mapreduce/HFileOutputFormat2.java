@@ -47,6 +47,7 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.RegionLocator;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.client.mapr.GenericHFactory;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.io.compress.Compression.Algorithm;
@@ -56,9 +57,6 @@ import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.io.hfile.HFileContext;
 import org.apache.hadoop.hbase.io.hfile.HFileContextBuilder;
-import org.apache.hadoop.hbase.client.mapr.BaseTableMappingRules;
-import org.apache.hadoop.hbase.client.mapr.GenericHFactory;
-import org.apache.hadoop.hbase.client.mapr.TableMappingRulesFactory;
 import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.apache.hadoop.hbase.regionserver.HStore;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
@@ -103,7 +101,6 @@ public class HFileOutputFormat2
       "hbase.mapreduce.hfileoutputformat.blocksize";
   private static final String DATABLOCK_ENCODING_FAMILIES_CONF_KEY =
       "hbase.mapreduce.hfileoutputformat.families.datablock.encoding";
-  private static final String MAPR_TABLE_PATH_CONF_KEY = "hbase.mapreduce.hfileoutputformat.mapr.tablepath";
 
   // This constant is public since the client can modify this when setting
   // up their conf object and thus refer to this symbol.
@@ -122,7 +119,7 @@ public class HFileOutputFormat2
       createRecordWriter(final TaskAttemptContext context)
           throws IOException {
     final Configuration conf = context.getConfiguration();
-    final String tablePathName = conf.get(MAPR_TABLE_PATH_CONF_KEY);
+    final String tablePathName = TableMapReduceUtil.getMapRTablePath(conf);
     if (tablePathName != null) {
       LOG.info("detected MapR table " + tablePathName +
                ", switching to BulkLoadRecordWriter");
@@ -301,24 +298,10 @@ public class HFileOutputFormat2
     };
   }
 
+  @Deprecated
   public static void configureMapRTablePath(Job job, String tableName)
   throws IOException {
-    Configuration conf = job.getConfiguration();
-
-    BaseTableMappingRules tableMappingRule = 
-        TableMappingRulesFactory.create(conf);
-    if (!tableMappingRule.isMapRTable(tableName))
-      return;
-
-    Path tablePath = tableMappingRule.getMaprTablePath(tableName.getBytes());
-    conf.set(MAPR_TABLE_PATH_CONF_KEY, tablePath.toString());
-    conf.setStrings("io.serializations", conf.get("io.serializations"),
-        MutationSerialization.class.getName(), ResultSerialization.class.getName(),
-        KeyValueSerialization.class.getName());
-
-    TableMapReduceUtil.addDependencyJars(conf, tableMappingRule.getClass());
-    TableMapReduceUtil.addDependencyJars(job);
-    LOG.info("Configured " + MAPR_TABLE_PATH_CONF_KEY + " to " + tablePath);
+    TableMapReduceUtil.configureMapRTablePath(job, tableName);
   }
 
   /*
@@ -473,7 +456,7 @@ public class HFileOutputFormat2
 
     // Remember the tablePath in jobConf
     String tableName = tableDescriptor.getTableName().getNameAsString();
-    configureMapRTablePath(job, tableName);
+    TableMapReduceUtil.configureMapRTablePath(job, tableName);
 
     // Use table's region boundaries for TOP split points.
     LOG.info("Looking up current regions for table " + tableDescriptor.getTableName());
