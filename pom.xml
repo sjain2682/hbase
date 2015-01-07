@@ -790,8 +790,24 @@
                 <include>hbase-default.xml</include>
               </includes>
               <stylesheet>${basedir}/src/main/xslt/configuration_to_docbook_section.xsl</stylesheet>
-              <outputDir>${basedir}/target/docbkx</outputDir>
+              <outputDir>${basedir}/src/main/docbkx</outputDir>
             </transformationSet>
+            <!-- For asciidoc -->
+            <transformationSet>
+              <!--Reaching up and over into common sub-module for hbase-default.xml-->
+              <dir>${basedir}/hbase-common/src/main/resources/</dir>
+              <includes>
+                <include>hbase-default.xml</include>
+              </includes>
+              <stylesheet>${basedir}/src/main/xslt/configuration_to_asciidoc_chapter.xsl</stylesheet>
+              <fileMappers>
+                <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.RegExpFileMapper">
+                  <pattern>^(.*)\.xml$</pattern>
+                  <replacement>$1.adoc</replacement>
+                </fileMapper>
+              </fileMappers>
+              <outputDir>${basedir}/src/main/asciidoc</outputDir>
+            </transformationSet> 
           </transformationSets>
         </configuration>
       </plugin>
@@ -905,6 +921,31 @@
           </execution>
         </executions>
       </plugin>
+      <!-- For AsciiDoc docs building -->
+      <plugin>
+        <groupId>org.asciidoctor</groupId>
+        <artifactId>asciidoctor-maven-plugin</artifactId>
+        <version>1.5.0</version> 
+        <executions>
+          <execution>
+            <id>output-html</id> 
+            <goals>
+              <goal>process-asciidoc</goal> 
+            </goals>
+            <phase>pre-site</phase>
+            <configuration>
+              <imagesDir>${basedir}/src/main/site/resources/images</imagesDir>
+              <doctype>book</doctype>
+              <attributes>
+                <stylesheet>hbase.css</stylesheet>
+              </attributes>
+              <backend>html5</backend>
+              <sourceHighlighter>coderay</sourceHighlighter>
+              <outputDirectory>target/docs</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
@@ -975,6 +1016,12 @@
             <groupId>org.apache.velocity</groupId>
             <artifactId>velocity</artifactId>
             <version>1.7</version>
+          </dependency>
+          <!-- For building docs from asciidoctor -->
+          <dependency>
+              <groupId>org.asciidoctor</groupId>
+              <artifactId>asciidoctor-maven-plugin</artifactId>
+              <version>1.5.0</version>
           </dependency>
         </dependencies>
         <configuration>

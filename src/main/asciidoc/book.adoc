@@ -1,0 +1,91 @@
+////
+/**
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+////
+
+= Apache HBase (TM) Reference Guide image:jumping-orca_rotated_25percent.png[]
+:Author: Apache HBase Team
+:Email: <hbase-dev@lists.apache.org>
+:doctype: book
+:numbered:
+:toc: left
+:toclevels: 1
+:toc-title: Contents
+:icons: font
+:iconsdir: icons
+// Uncomment this to build locally using asciidoctor -d book book.adoc
+//:imagesdir: /Users/misty/git/hbase/src/main/site/resources/images
+:linkcss:
+:experimental:
+:source-language: java
+// :docinfo1: 
+// (uncomment the above to pick up the docinfo-footer.html -- this is used to provide a link from the html-single files back to the main html file)
+
+
+:leveloffset: 0
+
+include::preface.adoc[]
+
+// The leveloffset causes level 1 sections (a single =) 
+// to be interpreted as level 2 sections. This enables 
+// each chapter to be built alone as a "book" or 
+// included in the main book, enabling html-single to preserve old bookmarks
+// Only use it for proper chapters, not preface or appendix
+
+
+include::getting_started.adoc[]
+include::configuration.adoc[]
+include::upgrading.adoc[]
+include::shell.adoc[]
+include::datamodel.adoc[]
+include::schema_design.adoc[]
+include::mapreduce.adoc[]
+include::security.adoc[]
+include::architecture.adoc[]
+include::hbase_apis.adoc[]
+include::external_apis.adoc[]
+include::thrift_filter_language.adoc[]
+include::cp.adoc[]
+include::performance.adoc[]
+include::troubleshooting.adoc[]
+include::case_studies.adoc[]
+include::ops_mgt.adoc[]
+include::developer.adoc[]
+include::unit_testing.adoc[]
+include::zookeeper.adoc[]
+include::community.adoc[]
+
+= Appendix
+
+include::appendix_contributing_to_documentation.adoc[]
+include::faq.adoc[]
+include::hbck_in_depth.adoc[]
+include::appendix_acl_matrix.adoc[]
+include::compression.adoc[]
+include::sql.adoc[]
+include::ycsb.adoc[]
+include::appendix_hfile_format.adoc[]
+include::other_info.adoc[]
+include::hbase_history.adoc[]
+include::asf.adoc[]
+include::orca.adoc[]
+include::tracing.adoc[]
+include::rpc.adoc[]
+
+
