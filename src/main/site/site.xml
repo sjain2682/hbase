@@ -63,8 +63,8 @@
       <item name="Other resources" href="resources.html" />
     </menu>
     <menu name="Documentation">
-      <item name="Reference" href="book.html" target="_blank" />
-      <item name="Getting Started" href="book/quickstart.html" />
+      <item name="Reference Guide" href="book.html" target="_blank" />
+      <item name="Getting Started" href="book.html#quickstart" />
       <item name="User API" href="apidocs/index.html" />
       <item name="Developer API" href="devapidocs/index.html" />
       <item name="X-Ref" href="xref/index.html" />

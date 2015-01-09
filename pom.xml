@@ -847,7 +847,7 @@
             </goals>
             <phase>pre-site</phase>
             <configuration>
-              <imagesDir>images</imagesDir>
+              <imagesDir>./images</imagesDir>
               <doctype>book</doctype>
               <attributes>
                 <stylesheet>hbase.css</stylesheet>
