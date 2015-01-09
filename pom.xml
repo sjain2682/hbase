@@ -783,15 +783,6 @@
         </executions>
         <configuration>
           <transformationSets>
-            <transformationSet>
-              <!--Reaching up and over into common sub-module for hbase-default.xml-->
-              <dir>${basedir}/hbase-common/src/main/resources/</dir>
-              <includes>
-                <include>hbase-default.xml</include>
-              </includes>
-              <stylesheet>${basedir}/src/main/xslt/configuration_to_docbook_section.xsl</stylesheet>
-              <outputDir>${basedir}/src/main/docbkx</outputDir>
-            </transformationSet>
             <!-- For asciidoc -->
             <transformationSet>
               <!--Reaching up and over into common sub-module for hbase-default.xml-->
@@ -843,89 +834,11 @@
           <suppressionsLocation>hbase/checkstyle-suppressions.xml</suppressionsLocation>
         </configuration>
       </plugin>
-      <!--Build the documentation.  We build it twice.  Once as a single page and then
-           again as multipage.-->
-      <plugin>
-        <groupId>com.agilejava.docbkx</groupId>
-        <artifactId>docbkx-maven-plugin</artifactId>
-        <version>2.0.15</version>
-        <inherited>false</inherited>
-        <dependencies>
-          <dependency>
-            <groupId>org.docbook</groupId>
-            <artifactId>docbook-xml</artifactId>
-            <version>4.4</version>
-            <scope>runtime</scope>
-          </dependency>
-          <dependency>
-            <groupId>net.sf.xslthl</groupId>
-            <artifactId>xslthl</artifactId>
-            <version>2.1.0</version>
-            <scope>runtime</scope>
-          </dependency>
-        </dependencies>
-        <configuration>
-          <highlightSource>1</highlightSource>
-          <imgSrcPath>images/</imgSrcPath>
-          <sourceDirectory>${basedir}/src/main/docbkx</sourceDirectory>
-          <xincludeSupported>true</xincludeSupported>
-          <useIdAsFilename>true</useIdAsFilename>
-          <sectionAutolabelMaxDepth>100</sectionAutolabelMaxDepth>
-          <sectionAutolabel>true</sectionAutolabel>
-          <htmlStylesheet>css/freebsd_docbook.css</htmlStylesheet>
-          <sectionLabelIncludesComponentLabel>true</sectionLabelIncludesComponentLabel>
-          <htmlCustomization>${basedir}/src/main/docbkx/customization.xsl</htmlCustomization>
-          <tocMaxDepth>2</tocMaxDepth>
-          <insertXrefPageNumber>yes</insertXrefPageNumber>
-          <chunkerOutputEncoding>UTF-8</chunkerOutputEncoding>
-        </configuration>
-        <executions>
-          <execution>
-            <id>multipage</id>
-            <goals>
-              <goal>generate-html</goal>
-            </goals>
-            <phase>pre-site</phase>
-            <configuration>
-              <navigShowtitles>true</navigShowtitles>
-              <chunkedOutput>true</chunkedOutput>
-              <targetDirectory>${basedir}/target/docbkx/book</targetDirectory>
-              <preProcess>
-                <copy todir="target/docbkx/book/images">
-                  <fileset dir="src/main/site/resources/images/"/>
-                </copy>
-                <copy todir="target/docbkx/book/css">
-                  <fileset dir="src/main/site/resources/css/"/>
-                </copy>
-              </preProcess>
-            </configuration>
-          </execution>
-          <execution>
-            <id>onepage</id>
-            <goals>
-              <goal>generate-html</goal>
-            </goals>
-            <phase>pre-site</phase>
-            <configuration>
-              <targetDirectory>${basedir}/target/docbkx/</targetDirectory>
-              <includes>book.xml</includes>
-              <preProcess>
-                <copy todir="target/docbkx/images">
-                  <fileset dir="src/main/site/resources/images/"/>
-                </copy>
-                <copy todir="target/docbkx/css">
-                  <fileset dir="src/main/site/resources/css/"/>
-                </copy>
-              </preProcess>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
       <!-- For AsciiDoc docs building -->
       <plugin>
         <groupId>org.asciidoctor</groupId>
         <artifactId>asciidoctor-maven-plugin</artifactId>
-        <version>1.5.0</version> 
+        <version>1.5.2</version> 
         <executions>
           <execution>
             <id>output-html</id> 
@@ -971,7 +884,7 @@
             </configuration>
           </execution>
           <execution>
-            <id>copy-docbkx</id>
+            <id>copy-docs</id>
             <goals>
               <goal>copy-resources</goal>
             </goals>
@@ -980,7 +893,7 @@
               <outputDirectory>target/site</outputDirectory>
               <resources>
                 <resource>
-                  <directory>${basedir}/target/docbkx</directory>
+                  <directory>${basedir}/target/docs</directory>
                   <includes>
                     <include>**/**</include>
                   </includes>
@@ -1018,11 +931,11 @@
             <version>1.7</version>
           </dependency>
           <!-- For building docs from asciidoctor -->
-          <dependency>
+          <!--<dependency>
               <groupId>org.asciidoctor</groupId>
               <artifactId>asciidoctor-maven-plugin</artifactId>
-              <version>1.5.0</version>
-          </dependency>
+              <version>1.5.2</version>
+          </dependency>-->
         </dependencies>
         <configuration>
           <siteDirectory>${basedir}/src/main/site</siteDirectory>
