@@ -29,8 +29,6 @@
 :toc-title: Contents
 :icons: font
 :iconsdir: icons
-// Uncomment this to build locally using asciidoctor -d book book.adoc
-//:imagesdir: /Users/misty/git/hbase/src/main/site/resources/images
 :linkcss:
 :experimental:
 :source-language: java
@@ -40,7 +38,7 @@
 
 :leveloffset: 0
 
-include::preface.adoc[]
+include::chapters/preface.adoc[]
 
 // The leveloffset causes level 1 sections (a single =) 
 // to be interpreted as level 2 sections. This enables 
@@ -49,43 +47,43 @@ include::preface.adoc[]
 // Only use it for proper chapters, not preface or appendix
 
 
-include::getting_started.adoc[]
-include::configuration.adoc[]
-include::upgrading.adoc[]
-include::shell.adoc[]
-include::datamodel.adoc[]
-include::schema_design.adoc[]
-include::mapreduce.adoc[]
-include::security.adoc[]
-include::architecture.adoc[]
-include::hbase_apis.adoc[]
-include::external_apis.adoc[]
-include::thrift_filter_language.adoc[]
-include::cp.adoc[]
-include::performance.adoc[]
-include::troubleshooting.adoc[]
-include::case_studies.adoc[]
-include::ops_mgt.adoc[]
-include::developer.adoc[]
-include::unit_testing.adoc[]
-include::zookeeper.adoc[]
-include::community.adoc[]
+include::chapters/getting_started.adoc[]
+include::chapters/configuration.adoc[]
+include::chapters/upgrading.adoc[]
+include::chapters/shell.adoc[]
+include::chapters/datamodel.adoc[]
+include::chapters/schema_design.adoc[]
+include::chapters/mapreduce.adoc[]
+include::chapters/security.adoc[]
+include::chapters/architecture.adoc[]
+include::chapters/hbase_apis.adoc[]
+include::chapters/external_apis.adoc[]
+include::chapters/thrift_filter_language.adoc[]
+include::chapters/cp.adoc[]
+include::chapters/performance.adoc[]
+include::chapters/troubleshooting.adoc[]
+include::chapters/case_studies.adoc[]
+include::chapters/ops_mgt.adoc[]
+include::chapters/developer.adoc[]
+include::chapters/unit_testing.adoc[]
+include::chapters/zookeeper.adoc[]
+include::chapters/community.adoc[]
 
 = Appendix
 
-include::appendix_contributing_to_documentation.adoc[]
-include::faq.adoc[]
-include::hbck_in_depth.adoc[]
-include::appendix_acl_matrix.adoc[]
-include::compression.adoc[]
-include::sql.adoc[]
-include::ycsb.adoc[]
-include::appendix_hfile_format.adoc[]
-include::other_info.adoc[]
-include::hbase_history.adoc[]
-include::asf.adoc[]
-include::orca.adoc[]
-include::tracing.adoc[]
-include::rpc.adoc[]
+include::chapters/appendix_contributing_to_documentation.adoc[]
+include::chapters/faq.adoc[]
+include::chapters/hbck_in_depth.adoc[]
+include::chapters/appendix_acl_matrix.adoc[]
+include::chapters/compression.adoc[]
+include::chapters/sql.adoc[]
+include::chapters/ycsb.adoc[]
+include::chapters/appendix_hfile_format.adoc[]
+include::chapters/other_info.adoc[]
+include::chapters/hbase_history.adoc[]
+include::chapters/asf.adoc[]
+include::chapters/orca.adoc[]
+include::chapters/tracing.adoc[]
+include::chapters/rpc.adoc[]
 
 
