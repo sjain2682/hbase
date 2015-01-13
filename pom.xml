@@ -797,7 +797,7 @@
                   <replacement>$1.adoc</replacement>
                 </fileMapper>
               </fileMappers>
-              <outputDir>${basedir}/src/main/asciidoc/chapters</outputDir>
+              <outputDir>${basedir}/target/asciidoc</outputDir>
             </transformationSet> 
           </transformationSets>
         </configuration>
@@ -834,31 +834,6 @@
           <suppressionsLocation>hbase/checkstyle-suppressions.xml</suppressionsLocation>
         </configuration>
       </plugin>
-      <!-- For AsciiDoc docs building -->
-      <plugin>
-        <groupId>org.asciidoctor</groupId>
-        <artifactId>asciidoctor-maven-plugin</artifactId>
-        <version>1.5.2</version> 
-        <executions>
-          <execution>
-            <id>output-html</id> 
-            <goals>
-              <goal>process-asciidoc</goal> 
-            </goals>
-            <phase>pre-site</phase>
-            <configuration>
-              <imagesDir>./images</imagesDir>
-              <doctype>book</doctype>
-              <attributes>
-                <stylesheet>hbase.css</stylesheet>
-              </attributes>
-              <backend>html5</backend>
-              <sourceHighlighter>coderay</sourceHighlighter>
-              <outputDirectory>target/docs</outputDirectory>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-resources-plugin</artifactId>
@@ -876,24 +851,6 @@
               <resources>
                 <resource>
                   <directory>${basedir}/target/apidocs</directory>
-                  <includes>
-                    <include>**/**</include>
-                  </includes>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-          <execution>
-            <id>copy-docs</id>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <phase>site</phase>
-            <configuration>
-              <outputDirectory>target/site</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${basedir}/target/docs</directory>
                   <includes>
                     <include>**/**</include>
                   </includes>
@@ -942,6 +899,31 @@
           <inputEncoding>UTF-8</inputEncoding>
           <outputEncoding>UTF-8</outputEncoding>
         </configuration>
+      </plugin>
+      <!-- For AsciiDoc docs building -->
+      <plugin>
+        <groupId>org.asciidoctor</groupId>
+        <artifactId>asciidoctor-maven-plugin</artifactId>
+        <version>1.5.2</version> 
+        <executions>
+          <execution>
+            <id>output-html</id> 
+            <goals>
+              <goal>process-asciidoc</goal> 
+            </goals>
+            <phase>site</phase>
+            <configuration>
+              <imagesDir>./images</imagesDir>
+              <doctype>book</doctype>
+              <attributes>
+                <stylesheet>hbase.css</stylesheet>
+              </attributes>
+              <backend>html5</backend>
+              <sourceHighlighter>coderay</sourceHighlighter>
+              <outputDirectory>target/site</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.jacoco</groupId>

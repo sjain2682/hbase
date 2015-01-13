@@ -32,58 +32,53 @@
 :linkcss:
 :experimental:
 :source-language: java
-// :docinfo1: 
-// (uncomment the above to pick up the docinfo-footer.html -- this is used to provide a link from the html-single files back to the main html file)
 
 
 :leveloffset: 0
 
-include::chapters/preface.adoc[]
+// The directory is called _chapters because asciidoctor skips direct
+// processing of files found in directories starting with an _. This
+// prevents each chapter being built as its own book.j
 
-// The leveloffset causes level 1 sections (a single =) 
-// to be interpreted as level 2 sections. This enables 
-// each chapter to be built alone as a "book" or 
-// included in the main book, enabling html-single to preserve old bookmarks
-// Only use it for proper chapters, not preface or appendix
+include::_chapters/preface.adoc[]
 
-
-include::chapters/getting_started.adoc[]
-include::chapters/configuration.adoc[]
-include::chapters/upgrading.adoc[]
-include::chapters/shell.adoc[]
-include::chapters/datamodel.adoc[]
-include::chapters/schema_design.adoc[]
-include::chapters/mapreduce.adoc[]
-include::chapters/security.adoc[]
-include::chapters/architecture.adoc[]
-include::chapters/hbase_apis.adoc[]
-include::chapters/external_apis.adoc[]
-include::chapters/thrift_filter_language.adoc[]
-include::chapters/cp.adoc[]
-include::chapters/performance.adoc[]
-include::chapters/troubleshooting.adoc[]
-include::chapters/case_studies.adoc[]
-include::chapters/ops_mgt.adoc[]
-include::chapters/developer.adoc[]
-include::chapters/unit_testing.adoc[]
-include::chapters/zookeeper.adoc[]
-include::chapters/community.adoc[]
+include::_chapters/getting_started.adoc[]
+include::_chapters/configuration.adoc[]
+include::_chapters/upgrading.adoc[]
+include::_chapters/shell.adoc[]
+include::_chapters/datamodel.adoc[]
+include::_chapters/schema_design.adoc[]
+include::_chapters/mapreduce.adoc[]
+include::_chapters/security.adoc[]
+include::_chapters/architecture.adoc[]
+include::_chapters/hbase_apis.adoc[]
+include::_chapters/external_apis.adoc[]
+include::_chapters/thrift_filter_language.adoc[]
+include::_chapters/cp.adoc[]
+include::_chapters/performance.adoc[]
+include::_chapters/troubleshooting.adoc[]
+include::_chapters/case_studies.adoc[]
+include::_chapters/ops_mgt.adoc[]
+include::_chapters/developer.adoc[]
+include::_chapters/unit_testing.adoc[]
+include::_chapters/zookeeper.adoc[]
+include::_chapters/community.adoc[]
 
 = Appendix
 
-include::chapters/appendix_contributing_to_documentation.adoc[]
-include::chapters/faq.adoc[]
-include::chapters/hbck_in_depth.adoc[]
-include::chapters/appendix_acl_matrix.adoc[]
-include::chapters/compression.adoc[]
-include::chapters/sql.adoc[]
-include::chapters/ycsb.adoc[]
-include::chapters/appendix_hfile_format.adoc[]
-include::chapters/other_info.adoc[]
-include::chapters/hbase_history.adoc[]
-include::chapters/asf.adoc[]
-include::chapters/orca.adoc[]
-include::chapters/tracing.adoc[]
-include::chapters/rpc.adoc[]
+include::_chapters/appendix_contributing_to_documentation.adoc[]
+include::_chapters/faq.adoc[]
+include::_chapters/hbck_in_depth.adoc[]
+include::_chapters/appendix_acl_matrix.adoc[]
+include::_chapters/compression.adoc[]
+include::_chapters/sql.adoc[]
+include::_chapters/ycsb.adoc[]
+include::_chapters/appendix_hfile_format.adoc[]
+include::_chapters/other_info.adoc[]
+include::_chapters/hbase_history.adoc[]
+include::_chapters/asf.adoc[]
+include::_chapters/orca.adoc[]
+include::_chapters/tracing.adoc[]
+include::_chapters/rpc.adoc[]
 
 
