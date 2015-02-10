@@ -456,6 +456,7 @@ public class HFileOutputFormat2
 
     // Remember the tablePath in jobConf
     String tableName = tableDescriptor.getTableName().getNameAsString();
+    // Won't do anything if it is not a mapr table
     TableMapReduceUtil.configureMapRTablePath(job, tableName);
 
     // Use table's region boundaries for TOP split points.
@@ -484,12 +485,19 @@ public class HFileOutputFormat2
     job.setOutputValueClass(KeyValue.class);
     job.setOutputFormatClass(HFileOutputFormat2.class);
 
-    // Set compression algorithms based on column families
-    configureCompression(conf, table.getTableDescriptor());
-    configureBloomType(table.getTableDescriptor(), conf);
-    configureBlockSize(table.getTableDescriptor(), conf);
-    HTableDescriptor tableDescriptor = table.getTableDescriptor();
-    configureDataBlockEncoding(tableDescriptor, conf);
+    //TODO: now this relies on configureMapRTablePath "do-nothing" when the table is not MapR table,
+    // Will fix it during connection fix.
+    //if (table.isMapRTable()) {
+      // Remember the tablePath in jobConf
+      String tableName = table.getTableDescriptor().getTableName().getAliasAsString();
+      TableMapReduceUtil.configureMapRTablePath(job, tableName);
+    //} else {
+      // Set compression algorithms based on column families
+      configureCompression(conf, table.getTableDescriptor());
+      configureBloomType(table.getTableDescriptor(), conf);
+      configureBlockSize(table.getTableDescriptor(), conf);
+      HTableDescriptor tableDescriptor = table.getTableDescriptor();
+    //}
 
     TableMapReduceUtil.addDependencyJars(job);
     TableMapReduceUtil.initCredentials(job);
