@@ -45,7 +45,6 @@ EOF
               $stderr.puts "Unable to connect to HBase services. Listing M7 tables from user's home directory."
             end
           end
-          regex = ".*"
         end
 
         now = Time.now
