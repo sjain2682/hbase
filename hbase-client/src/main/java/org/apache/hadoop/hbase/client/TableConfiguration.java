@@ -47,7 +47,7 @@ public class TableConfiguration {
    * Constructor
    * @param conf Configuration object
    */
-  TableConfiguration(Configuration conf) {
+  public TableConfiguration(Configuration conf) {
     this.writeBufferSize = conf.getLong(WRITE_BUFFER_SIZE_KEY, WRITE_BUFFER_SIZE_DEFAULT);
 
     this.metaOperationTimeout = conf.getInt(

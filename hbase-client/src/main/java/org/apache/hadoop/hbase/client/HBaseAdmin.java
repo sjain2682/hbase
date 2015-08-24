@@ -18,9 +18,10 @@
  */
 package org.apache.hadoop.hbase.client;
 
+import static org.apache.hadoop.hbase.client.mapr.TableMappingRulesFactory.UNSETDB;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -53,13 +54,11 @@ import org.apache.hadoop.hbase.MasterNotRunningException;
 import org.apache.hadoop.hbase.MetaTableAccessor;
 import org.apache.hadoop.hbase.NamespaceDescriptor;
 import org.apache.hadoop.hbase.NotServingRegionException;
-import org.apache.hadoop.hbase.RegionException;
 import org.apache.hadoop.hbase.RegionLocations;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.TableNotDisabledException;
-import org.apache.hadoop.hbase.TableNotEnabledException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.UnknownRegionException;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
@@ -69,6 +68,7 @@ import org.apache.hadoop.hbase.classification.InterfaceStability;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitor;
 import org.apache.hadoop.hbase.client.MetaScanner.MetaScannerVisitorBase;
 import org.apache.hadoop.hbase.client.mapr.AbstractHBaseAdmin;
+import org.apache.hadoop.hbase.client.mapr.AbstractMapRClusterConnection;
 import org.apache.hadoop.hbase.client.mapr.BaseTableMappingRules;
 import org.apache.hadoop.hbase.client.mapr.BaseTableMappingRules.ClusterType;
 import org.apache.hadoop.hbase.client.mapr.GenericHFactory;
@@ -153,6 +153,7 @@ import org.apache.hadoop.hbase.quotas.QuotaFilter;
 import org.apache.hadoop.hbase.quotas.QuotaRetriever;
 import org.apache.hadoop.hbase.quotas.QuotaSettings;
 import org.apache.hadoop.hbase.regionserver.wal.FailedLogCloseException;
+import org.apache.hadoop.hbase.security.UserProvider;
 import org.apache.hadoop.hbase.snapshot.ClientSnapshotDescriptionUtils;
 import org.apache.hadoop.hbase.snapshot.HBaseSnapshotException;
 import org.apache.hadoop.hbase.snapshot.RestoreSnapshotException;
@@ -215,6 +216,8 @@ public class HBaseAdmin implements Admin {
   private static final String ZK_IDENTIFIER_PREFIX =  "hbase-admin-on-";
 
   private ClusterConnection connection;
+  private ClusterConnection maprConnection_ = null;
+  private boolean cleanupMapRConnectionOnClose_ = false;
 
   private volatile Configuration conf;
   private long pause;
@@ -250,21 +253,25 @@ public class HBaseAdmin implements Admin {
   @Deprecated
   public HBaseAdmin(final Configuration c)
   throws MasterNotRunningException, ZooKeeperConnectionException, IOException {
+    this.conf = new Configuration(c);
+    // Constructor from 0.98 or older, remove the 1.1 settings, so that it could behave like before.
+    if (this.conf != null) {
+      this.conf.set(ConnectionFactory.DEFAULT_DB, UNSETDB);
+    }
     // Will not leak connections, as the new implementation of the constructor
     // does not throw exceptions anymore.
     hbaseConnector_ = new HBaseConnector() {
       @Override
       void connect() throws ZooKeeperConnectionException, MasterNotRunningException, IOException {
-        connectWithConfiguration(c);
+        connectWithConfiguration(conf);
       }
     };
-    commonInit(c);
+    commonInit(this.conf);
   }
   void connectWithConfiguration(Configuration c)
       throws ZooKeeperConnectionException, MasterNotRunningException, IOException {
-    this.conf = new Configuration(c);
-    //this.connection = HConnectionManager.getConnection(this.conf);
-    this.connection = ConnectionManager.getConnectionInternal(this.conf);
+    //this is a HConnectionImplementation
+    this.connection = ConnectionManager.getConnectionInternal(c);
     this.cleanupConnectionOnClose = true;
 
     this.pause = this.conf.getLong(HConstants.HBASE_CLIENT_PAUSE,
@@ -283,7 +290,6 @@ public class HBaseAdmin implements Admin {
   public int getOperationTimeout() {
     return operationTimeout;
   }
-
 
   /**
   * <p><b>MapR Notes: </b>Unlike the Apache version, a connection to
@@ -310,8 +316,31 @@ public class HBaseAdmin implements Admin {
     this((ClusterConnection)connection);
   }
 
-  HBaseAdmin(final ClusterConnection connection)
+  public HBaseAdmin(final ClusterConnection connection)
       throws MasterNotRunningException, ZooKeeperConnectionException {
+
+    this.conf = connection.getConfiguration();
+
+    // we know for sure this is a mapr connection.
+    if (connection instanceof AbstractMapRClusterConnection) {
+      try {
+        tableMappingRule_ = ((AbstractMapRClusterConnection) connection).getTableMappingRule();
+        //create a new abstract admin, so that connection close will not affect this object.
+        maprHBaseAdmin_ = ((AbstractMapRClusterConnection) connection).createAbstractHBaseAdmin();
+      } catch (IOException e) {
+        throw new MasterNotRunningException("Failed to connect to mapr cluster. Reason:"+e.getStackTrace());
+      }
+      UserProvider provider = UserProvider.instantiate(this.conf);
+      try {
+        maprHBaseAdmin_.setUser(provider.getCurrent());
+      } catch (IOException e) {
+        throw new MasterNotRunningException("Failed to get current user. Reason:"+e.getStackTrace());
+      }
+      hbaseConnector_ = null;
+      maprConnection_ = connection;
+      cleanupMapRConnectionOnClose_ = false;
+      return;
+    }
     // we want to delay connection to HBase until it is actually
     // required since in a pure M7 world there won't be any HBase
     hbaseConnector_ = new HBaseConnector() {
@@ -327,7 +356,6 @@ public class HBaseAdmin implements Admin {
   }
   private void connectWithHConnection(ClusterConnection connection)
       throws MasterNotRunningException, ZooKeeperConnectionException  {
-    this.conf = connection.getConfiguration();
     this.connection = connection;
 
     this.pause = this.conf.getLong(HConstants.HBASE_CLIENT_PAUSE,
@@ -397,9 +425,19 @@ public class HBaseAdmin implements Admin {
     return true;
   }
 
+  private boolean isMapRDefault() {
+    if (tableMappingRule_.getClusterType()  == BaseTableMappingRules.ClusterType.MAPR_ONLY) {
+      return true;
+    }
+    if (tableMappingRule_.isMapRDefault()) {
+      return true;
+    }
+    return false;
+  }
+
   private boolean checkIfMapRDefault(boolean connectToHBaseOtherwise)
       throws ZooKeeperConnectionException, MasterNotRunningException {
-    if (tableMappingRule_.isMapRDefault()) {
+    if (isMapRDefault()) {
       return true;
     }
     if (connectToHBaseOtherwise) {
@@ -422,6 +460,9 @@ public class HBaseAdmin implements Admin {
     if (tableMappingRule_.isMapRTable(tableName)) {
       return true;
     }
+    if (tableMappingRule_.getClusterType() == BaseTableMappingRules.ClusterType.MAPR_ONLY) {
+      throw new ZooKeeperConnectionException("This Admin is a MapR cluster Admin, but the table "+tableName+" is not a MapRDB table." );
+    }
     if (connectToHBaseOtherwise) {
       ensureConnectedToHBase();
     }
@@ -439,13 +480,7 @@ public class HBaseAdmin implements Admin {
    */
   private boolean checkIfMapRTable(String tableName, boolean connectToHBaseOtherwise)
       throws ZooKeeperConnectionException, MasterNotRunningException {
-    if (tableMappingRule_.isMapRTable(HRegionInfo.getTableName(tableName))) {
-      return true;
-    }
-    if (connectToHBaseOtherwise) {
-      ensureConnectedToHBase();
-    }
-    return false;
+    return checkIfMapRTable(TableName.valueOf(tableName), connectToHBaseOtherwise);
   }
 
   /**
@@ -459,21 +494,20 @@ public class HBaseAdmin implements Admin {
    */
   private boolean checkIfMapRTable(byte[] tableName, boolean connectToHBaseOtherwise)
       throws ZooKeeperConnectionException, MasterNotRunningException {
-    return checkIfMapRTable(Bytes.toString(tableName), connectToHBaseOtherwise);
+    return checkIfMapRTable(TableName.valueOf(tableName), connectToHBaseOtherwise);
   }
 
-  private void commonInit(Configuration c)
+  private void commonInit(Configuration inConf)
       throws ZooKeeperConnectionException, MasterNotRunningException {
-    this.conf = c;
     if (BaseTableMappingRules.isInHBaseService()) {
       tableMappingRule_ = BaseTableMappingRules.INSTANCE;
     } else {
       try {
-        tableMappingRule_ = TableMappingRulesFactory.create(conf);
+        tableMappingRule_ = TableMappingRulesFactory.create(inConf);
         if (tableMappingRule_.getClusterType() != ClusterType.HBASE_ONLY) {
           maprHBaseAdmin_ = adminFactory_.getImplementorInstance(
-              conf.get("hbaseadmin.impl.mapr", "com.mapr.fs.hbase.HBaseAdminImpl"),
-              new Object[] {conf, tableMappingRule_},
+              inConf.get("hbaseadmin.impl.mapr", "com.mapr.fs.hbase.HBaseAdminImpl"),
+              new Object[] {inConf, tableMappingRule_},
               new Class[] {Configuration.class, BaseTableMappingRules.class});
         }
       } catch (Exception e) {
@@ -481,7 +515,7 @@ public class HBaseAdmin implements Admin {
       }
     }
     if (tableMappingRule_.getClusterType() == ClusterType.HBASE_ONLY
-        || c.getBoolean(HBASE_ADMIN_CONNECT_AT_CONSTRUCTION, false)) {
+        || inConf.getBoolean(HBASE_ADMIN_CONNECT_AT_CONSTRUCTION, false)) {
       ensureConnectedToHBase();
     }
   }
@@ -506,12 +540,25 @@ public class HBaseAdmin implements Admin {
    * trying, and failing, to connect to HBase services.<p>
    *
    * @return HConnection used by this object. */
-  //TODO: should we change it to return ClusterConnection?
   @Override
   public HConnection getConnection() {
+    if (isMapRDefault()) {
+      if (maprConnection_ == null) {
+        try {
+          UserProvider provider = UserProvider.instantiate(conf);
+          maprConnection_ = (ClusterConnection) AbstractMapRClusterConnection.createMapRClusterConnection(getConfiguration(), true,
+                  provider.getCurrent(),tableMappingRule_);
+          cleanupMapRConnectionOnClose_ = true;
+        } catch (IOException e) {
+          LOG.error("Failed to get mapr connection. " + e.getStackTrace());
+        }
+      }
+      return maprConnection_;
+    }
     try {
       ensureConnectedToHBase();
     } catch (IOException e) {
+      LOG.error("Failed to get hbase connection. " + e.getStackTrace());
       connection = null;
     }
     return connection;
@@ -526,6 +573,9 @@ public class HBaseAdmin implements Admin {
   @Deprecated
   public boolean isMasterRunning()
   throws MasterNotRunningException, ZooKeeperConnectionException {
+    if (checkIfMapRDefault(false)) {
+      return maprHBaseAdmin_.isMasterRunning();
+    }
     int numRetries = this.conf.getInt("hbase.client.retries.number", 10);
     try {
       this.conf.setInt("hbase.client.retries.number",
@@ -538,6 +588,14 @@ public class HBaseAdmin implements Admin {
     return getConnection().isMasterRunning();
   }
 
+  public static void logDefaultDb(Configuration inConf) {
+    if (inConf == null) {
+      LOG.info("Input Configuration is null.");
+      return;
+    }
+    LOG.info("defaultDb = " + inConf.get(ConnectionFactory.DEFAULT_DB));
+  }
+
   /**
    * @param tableName Table to check.
    * @return True if table exists already.
@@ -548,6 +606,7 @@ public class HBaseAdmin implements Admin {
     if (checkIfMapRTable(tableName, true)) {
       return maprHBaseAdmin_.tableExists(tableName.getAliasAsString());
     }
+
     tableName = MapRUtil.adjustTableName(tableName);
     return MetaTableAccessor.tableExists(connection, tableName);
   }
@@ -564,7 +623,10 @@ public class HBaseAdmin implements Admin {
 
   @Override
   public HTableDescriptor[] listTables() throws IOException {
-    return listTables((Pattern)null, false);
+    if (checkIfMapRDefault(false) || !ensureConnectedToHBase(false)) {
+      return maprHBaseAdmin_.listTables();
+    }
+    return listTablesInternal((Pattern)null, false);
   }
 
   @Override
@@ -574,25 +636,23 @@ public class HBaseAdmin implements Admin {
 
   @Override
   public HTableDescriptor[] listTables(String regex) throws IOException {
-    return listTables(Pattern.compile(regex), false);
+    return listTables(regex, false);
   }
 
   @Override
   public HTableDescriptor[] listTables(Pattern pattern, final boolean includeSysTables)
       throws IOException {
-    String regex = pattern.pattern();
-    if (checkIfMapRTable(regex, false) || !ensureConnectedToHBase(false)) {
-      return maprHBaseAdmin_.listTables(regex );
+    if (pattern == null) {
+      if (checkIfMapRDefault(false) || !ensureConnectedToHBase(false)) {
+        return maprHBaseAdmin_.listTables();
+      }
+      return listTablesInternal(pattern, includeSysTables);
+    } else {
+      return listTables(pattern.pattern(), includeSysTables);
     }
-
-    regex = MapRUtil.adjustTableNameString(regex);
-    if (!regex.equals(pattern.pattern())) {
-      pattern = Pattern.compile(regex);
-    }
-    return listTablesInternal(pattern, includeSysTables);
   }
 
-  public HTableDescriptor[] listTablesInternal(final Pattern pattern, final boolean includeSysTables)
+  private HTableDescriptor[] listTablesInternal(final Pattern pattern, final boolean includeSysTables)
       throws IOException {
       return executeCallable(new MasterCallable<HTableDescriptor[]>(getConnection()) {
       @Override
@@ -607,7 +667,20 @@ public class HBaseAdmin implements Admin {
   @Override
   public HTableDescriptor[] listTables(String regex, boolean includeSysTables)
       throws IOException {
-    return listTables(Pattern.compile(regex), includeSysTables);
+
+    if (regex == null) {
+      if (checkIfMapRDefault(false) || !ensureConnectedToHBase(false)) {
+        return maprHBaseAdmin_.listTables();
+      }
+      return listTablesInternal((Pattern)null, includeSysTables);
+
+    } else {
+      if (checkIfMapRTable(regex, false) || !ensureConnectedToHBase(false)) {
+        return maprHBaseAdmin_.listTables(regex);
+      }
+      String adjustedRegex = MapRUtil.adjustTableNameString(regex);
+      return listTablesInternal(Pattern.compile(adjustedRegex), includeSysTables);
+    }
   }
 
   /**
@@ -618,6 +691,7 @@ public class HBaseAdmin implements Admin {
    */
   @Deprecated
   public String[] getTableNames() throws IOException {
+    // connectToHBaseOtherwise = false and throwException = false
     if (checkIfMapRDefault(false) || !ensureConnectedToHBase(false)) {
       return maprHBaseAdmin_.getTableNames();
     }
@@ -638,6 +712,10 @@ public class HBaseAdmin implements Admin {
    */
   @Deprecated
   public String[] getTableNames(Pattern pattern) throws IOException {
+    if (pattern == null) {
+      return getTableNames();
+    }
+
     if (checkIfMapRTable(pattern.pattern(), true)) {
       return maprHBaseAdmin_.getTableNames(pattern.pattern());
     }
@@ -658,6 +736,10 @@ public class HBaseAdmin implements Admin {
    */
   @Deprecated
   public String[] getTableNames(String regex) throws IOException {
+    if (regex == null) {
+      return getTableNames();
+    }
+
     if (checkIfMapRTable(regex, true)) {
       return maprHBaseAdmin_.getTableNames(regex);
     }
@@ -669,26 +751,40 @@ public class HBaseAdmin implements Admin {
     if (checkIfMapRDefault(false) || !ensureConnectedToHBase(false)) {
       return maprHBaseAdmin_.listTableNames();
     }
-    return listTableNames((Pattern)null, false);
+    return listTableNamesInternal((Pattern)null, false);
   }
 
   @Override
   public TableName[] listTableNames(Pattern pattern) throws IOException {
+    if (pattern == null) {
+      return listTableNames();
+    }
     return listTableNames(pattern, false);
   }
 
   @Override
   public TableName[] listTableNames(String regex) throws IOException {
-    return listTableNames(Pattern.compile(regex), false);
+    if (regex == null) {
+      return listTableNames();
+    }
+    return listTableNames(regex, false);
   }
 
   @Override
   public TableName[] listTableNames(final Pattern pattern, final boolean includeSysTables)
       throws IOException {
-    //TODO: add maprHbaseAdmin.listTablesNames(pattern)
-    if (checkIfMapRDefault(false) || !ensureConnectedToHBase(false)) {
-      return maprHBaseAdmin_.listTableNames();
+    if (pattern == null) {
+      if (checkIfMapRDefault(false) || !ensureConnectedToHBase(false)) {
+        return maprHBaseAdmin_.listTableNames();
+      }
+      return listTableNamesInternal((Pattern)null, includeSysTables);
     }
+    return listTableNames(pattern.pattern(), includeSysTables);
+  }
+
+  private TableName[] listTableNamesInternal(final Pattern pattern, final boolean includeSysTables)
+      throws IOException {
+
     return executeCallable(new MasterCallable<TableName[]>(getConnection()) {
       @Override
       public TableName[] call(int callTimeout) throws ServiceException {
@@ -703,7 +799,19 @@ public class HBaseAdmin implements Admin {
   @Override
   public TableName[] listTableNames(final String regex, final boolean includeSysTables)
       throws IOException {
-    return listTableNames(Pattern.compile(regex), includeSysTables);
+    if (regex == null) {
+      if (checkIfMapRDefault(false) || !ensureConnectedToHBase(false)) {
+        return maprHBaseAdmin_.listTableNames();
+      }
+      return listTableNamesInternal((Pattern)null, includeSysTables);
+    }
+
+    if (checkIfMapRTable(regex, false) || !ensureConnectedToHBase(false)) {
+      return maprHBaseAdmin_.listTableNames(regex);
+    }
+
+    String adjustedRegex = MapRUtil.adjustTableNameString(regex);
+    return listTableNamesInternal(Pattern.compile(adjustedRegex), includeSysTables);
   }
 
   /**
@@ -749,6 +857,7 @@ public class HBaseAdmin implements Admin {
 
   public HTableDescriptor getTableDescriptor(final byte[] tableName)
   throws TableNotFoundException, IOException {
+    if (tableName == null) return null;
     return getTableDescriptor(TableName.valueOf(tableName));
   }
 
@@ -845,7 +954,7 @@ public class HBaseAdmin implements Admin {
       throws IOException {
     try {
       Future<Void> future = createTableAsyncV2(desc, splitKeys);
-      if (checkIfMapRTable(desc.getTableName(), false)) {     
+      if (checkIfMapRTable(desc.getTableName(), false)) {
          return;
       }
       // TODO: how long should we wait? spin forever?
@@ -904,10 +1013,11 @@ public class HBaseAdmin implements Admin {
   // TODO: This should be called Async but it will break binary compatibility
   private Future<Void> createTableAsyncV2(final HTableDescriptor desc, final byte[][] splitKeys)
       throws IOException {
-    desc.validate();
+
     if (desc.getTableName() == null) {
       throw new IllegalArgumentException("TableName cannot be null");
     }
+    desc.validate();
     if (checkIfMapRTable(desc.getTableName(), true)) {
       maprHBaseAdmin_.createTable(desc, splitKeys);
       return null;
@@ -1226,10 +1336,10 @@ public class HBaseAdmin implements Admin {
   @Override
   public void truncateTable(final TableName tableName, final boolean preserveSplits)
       throws IOException {
-   if (checkIfMapRTable(tableName, true)) {
-     maprHBaseAdmin_.truncateTable(tableName, preserveSplits);
-     return;
-   }
+    if (checkIfMapRTable(tableName, true)) {
+      maprHBaseAdmin_.truncateTable(tableName, preserveSplits);
+      return;
+    }
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
       public Void call(int callTimeout) throws ServiceException {
@@ -1255,8 +1365,13 @@ public class HBaseAdmin implements Admin {
    * @see #enableTableAsync(byte[])
    */
   @Override
-  public void enableTable(final TableName tableName)
+  public void enableTable(TableName tableName)
   throws IOException {
+    if (checkIfMapRTable(tableName, true)) {
+      maprHBaseAdmin_.enableTable(tableName.getAliasAsString());
+      return;
+    }
+    tableName = MapRUtil.adjustTableName(tableName);
     Future<Void> future = enableTableAsyncV2(tableName);
     try {
       future.get(syncWaitTimeout, TimeUnit.MILLISECONDS);
@@ -1347,6 +1462,7 @@ public class HBaseAdmin implements Admin {
       return;
     }
     tableName = MapRUtil.adjustTableName(tableName);
+    TableName.isLegalFullyQualifiedTableName(tableName.getName());
     enableTableAsyncInternal(tableName);
   }
   private void enableTableAsyncInternal(final TableName tableName)
@@ -1356,7 +1472,7 @@ public class HBaseAdmin implements Admin {
 
   public void enableTableAsync(final byte[] tableName)
   throws IOException {
-    enableTable(TableName.valueOf(tableName));
+    enableTableAsync(TableName.valueOf(tableName));
   }
 
   public void enableTableAsync(final String tableName)
@@ -1508,6 +1624,7 @@ public class HBaseAdmin implements Admin {
       return;
     }
     tableName = MapRUtil.adjustTableName(tableName);
+    TableName.isLegalFullyQualifiedTableName(tableName.getName());
     disableTableAsyncInternal(tableName);
   }
   private void disableTableAsyncInternal(final TableName tableName)
@@ -1541,6 +1658,9 @@ public class HBaseAdmin implements Admin {
       maprHBaseAdmin_.disableTable(tableName.getAliasAsString());
       return;
     }
+    tableName = MapRUtil.adjustTableName(tableName);
+    TableName.isLegalFullyQualifiedTableName(tableName.getName());
+
     Future<Void> future = disableTableAsyncV2(tableName);
 
     try {
@@ -1671,9 +1791,13 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public HTableDescriptor[] disableTables(Pattern pattern) throws IOException {
-    if (checkIfMapRTable(pattern.pattern(), true)) {
-      return maprHBaseAdmin_.disableTables(pattern.pattern());
+    String regex = pattern.pattern();
+    if (checkIfMapRTable(regex, true)) {
+      return maprHBaseAdmin_.disableTables(regex);
     }
+    String adjustedRegex =  MapRUtil.adjustTableNameString(regex);
+    pattern = pattern.compile(adjustedRegex);
+
     List<HTableDescriptor> failed = new LinkedList<HTableDescriptor>();
     for (HTableDescriptor table : listTables(pattern)) {
       if (isTableEnabled(table.getTableName())) {
@@ -1721,7 +1845,6 @@ public class HBaseAdmin implements Admin {
   public boolean isTableEnabled(String tableName) throws IOException {
     return isTableEnabled(TableName.valueOf(tableName));
   }
-
 
 
   /**
@@ -1821,8 +1944,7 @@ public class HBaseAdmin implements Admin {
   public Pair<Integer, Integer> getAlterStatus(TableName tableName)
   throws IOException {
     if (checkIfMapRTable(tableName, true)) {
-      // FIXME Revisit if we need to return tablet count
-      return new Pair<Integer, Integer>(0, 0);
+      return maprHBaseAdmin_.getAlterStatus(tableName);
     }
 
     tableName = MapRUtil.adjustTableName(tableName);
@@ -2118,8 +2240,7 @@ public class HBaseAdmin implements Admin {
   public boolean closeRegionWithEncodedRegionName(final String encodedRegionName,
       final String serverName) throws IOException {
     if (checkIfMapRTable(encodedRegionName, true)) {
-      maprHBaseAdmin_.closeRegionWithEncodedRegionName(encodedRegionName, serverName);
-      return true;
+      return maprHBaseAdmin_.closeRegionWithEncodedRegionName(encodedRegionName, serverName);
     }
     if (null == serverName || ("").equals(serverName.trim())) {
       throw new IllegalArgumentException(
@@ -2167,8 +2288,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public List<HRegionInfo> getOnlineRegions(final ServerName sn) throws IOException {
     if (checkIfMapRDefault(true)) {
-      throw new UnsupportedOperationException(
-        "getOnlineRegions is not supported for MapR.");
+        return maprHBaseAdmin_.getOnlineRegions(sn);
     }
     AdminService.BlockingInterface admin = getConnection().getAdmin(sn);
     return ProtobufUtil.getOnlineRegions(admin);
@@ -2178,7 +2298,14 @@ public class HBaseAdmin implements Admin {
    * {@inheritDoc}
    */
   @Override
-  public void flush(final TableName tableName) throws IOException {
+  public void flush(TableName tableName) throws IOException {
+    if (checkIfMapRTable(tableName, true)) {
+      //What is the difference between alias and name?
+      maprHBaseAdmin_.flush(tableName.getName());
+      return;
+    }
+    tableName = MapRUtil.adjustTableName(tableName);
+
     checkTableExists(tableName);
     if (isTableDisabled(tableName)) {
       LOG.info("Table is disabled: " + tableName.getNameAsString());
@@ -2192,7 +2319,14 @@ public class HBaseAdmin implements Admin {
    * {@inheritDoc}
    */
   @Override
-  public void flushRegion(final byte[] regionName) throws IOException {
+  public void flushRegion(byte[] regionName) throws IOException {
+    if (checkIfMapRTable(regionName, true)) {
+      //What is the difference between alias and name?
+      maprHBaseAdmin_.flush(regionName);
+      return;
+    }
+    regionName = MapRUtil.adjustTableName(regionName);
+
     Pair<HRegionInfo, ServerName> regionServerPair = getRegion(regionName);
     if (regionServerPair == null) {
       throw new IllegalArgumentException("Unknown regionname: " + Bytes.toStringBinary(regionName));
@@ -2481,8 +2615,14 @@ public class HBaseAdmin implements Admin {
    * @throws IOException if a remote or network exception occurs
    * @throws InterruptedException
    */
-  private void compactRegion(final byte[] regionName, final byte[] columnFamily,final boolean major)
+  private void compactRegion(byte[] regionName, final byte[] columnFamily,final boolean major)
   throws IOException {
+    if (checkIfMapRTable(regionName, true)) {
+      maprHBaseAdmin_.compact(regionName, columnFamily, major);
+      return;
+    }
+    regionName = MapRUtil.adjustTableName(regionName);
+
     Pair<HRegionInfo, ServerName> regionServerPair = getRegion(regionName);
     if (regionServerPair == null) {
       throw new IllegalArgumentException("Invalid region: " + Bytes.toStringBinary(regionName));
@@ -2684,6 +2824,10 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public boolean isBalancerEnabled() throws IOException {
+    //Ask whether mapr always has the balancer enabled?
+    if (checkIfMapRDefault(true)) {
+      return true;
+    }
     return executeCallable(new MasterCallable<Boolean>(getConnection()) {
       @Override
       public Boolean call(int callTimeout) throws ServiceException {
@@ -2766,6 +2910,12 @@ public class HBaseAdmin implements Admin {
   public void mergeRegions(final byte[] encodedNameOfRegionA,
       final byte[] encodedNameOfRegionB, final boolean forcible)
       throws IOException {
+    if (checkIfMapRTable(encodedNameOfRegionA, true) ||
+        checkIfMapRTable(encodedNameOfRegionB, true)) {
+        maprHBaseAdmin_.mergeRegions(encodedNameOfRegionA, encodedNameOfRegionB, forcible);
+        return;
+    }
+
     Pair<HRegionInfo, ServerName> pair = getRegion(encodedNameOfRegionA);
     if (pair != null && pair.getFirst().getReplicaId() != HRegionInfo.DEFAULT_REPLICA_ID)
       throw new IllegalArgumentException("Can't invoke merge on non-default regions directly");
@@ -2857,9 +3007,9 @@ public class HBaseAdmin implements Admin {
    * {@code "<table_path>,<region_fid>"}. For example:
    * {@code "/user/admin/usertable,2085.39.131212"}.
    * The parameter {@code splitPoint} is currently not supported.<p>
- * @throws IOException 
- * @throws MasterNotRunningException 
- * @throws ZooKeeperConnectionException 
+   * @throws IOException
+   * @throws MasterNotRunningException 
+   * @throws ZooKeeperConnectionException 
    *
    */
   @Override
@@ -2906,8 +3056,13 @@ public class HBaseAdmin implements Admin {
    *
    */
   @Override
-  public void splitRegion(final byte[] regionName, final byte [] splitPoint)
+  public void splitRegion(byte[] regionName, final byte [] splitPoint)
   throws IOException {
+    if (checkIfMapRTable(regionName, true)) {
+      maprHBaseAdmin_.split(regionName, splitPoint);
+      return;
+    }
+    regionName = MapRUtil.adjustTableName(regionName);
     Pair<HRegionInfo, ServerName> regionServerPair = getRegion(regionName);
     if (regionServerPair == null) {
       throw new IllegalArgumentException("Invalid region: " + Bytes.toStringBinary(regionName));
@@ -3103,7 +3258,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public synchronized void shutdown() throws IOException {
     if (checkIfMapRDefault(true)) {
-      LOG.warn("shutdown() called for a MapR cluster, silently ignoring.");
+      maprHBaseAdmin_.shutdown();
       return;
     }
     executeCallable(new MasterCallable<Void>(getConnection()) {
@@ -3124,7 +3279,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public synchronized void stopMaster() throws IOException {
     if (checkIfMapRDefault(true)) {
-      LOG.warn("stopMaster() called for a MapR cluster, silently ignoring.");
+      maprHBaseAdmin_.stopMaster();
       return;
     }
     executeCallable(new MasterCallable<Void>(getConnection()) {
@@ -3146,7 +3301,7 @@ public class HBaseAdmin implements Admin {
   public synchronized void stopRegionServer(final String hostnamePort)
   throws IOException {
     if (checkIfMapRDefault(true)) {
-      LOG.warn("stopRegionServer() called for a MapR cluster, silently ignoring.");
+      maprHBaseAdmin_.stopRegionServer(hostnamePort);
       return;
     }
     String hostname = Addressing.parseHostname(hostnamePort);
@@ -3169,7 +3324,11 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public ClusterStatus getClusterStatus() throws IOException {
+    if (checkIfMapRDefault(false)) {
+      return maprHBaseAdmin_.getClusterStatus();
+    }
     if (!ensureConnectedToHBase(false)) {
+      LOG.warn("cannot connect to hbase cluster, return null.");
       return null;
     }
     return executeCallable(new MasterCallable<ClusterStatus>(getConnection()) {
@@ -3196,6 +3355,10 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public void createNamespace(final NamespaceDescriptor descriptor) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      maprHBaseAdmin_.createNamespace(descriptor);
+      return;
+    }
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
       public Void call(int callTimeout) throws Exception {
@@ -3216,6 +3379,10 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public void modifyNamespace(final NamespaceDescriptor descriptor) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      maprHBaseAdmin_.modifyNamespace(descriptor);
+      return;
+    }
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
       public Void call(int callTimeout) throws Exception {
@@ -3233,6 +3400,10 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public void deleteNamespace(final String name) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      maprHBaseAdmin_.deleteNamespace(name);
+      return;
+    }
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
       public Void call(int callTimeout) throws Exception {
@@ -3251,7 +3422,10 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public NamespaceDescriptor getNamespaceDescriptor(final String name) throws IOException {
-    return
+      if (checkIfMapRDefault(true)) {
+        return maprHBaseAdmin_.getNamespaceDescriptor(name);
+      }
+      return
         executeCallable(new MasterCallable<NamespaceDescriptor>(getConnection()) {
           @Override
           public NamespaceDescriptor call(int callTimeout) throws Exception {
@@ -3269,6 +3443,9 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public NamespaceDescriptor[] listNamespaceDescriptors() throws IOException {
+    if (checkIfMapRDefault(true)) {
+      return maprHBaseAdmin_.listNamespaceDescriptors();
+    }
     return
         executeCallable(new MasterCallable<NamespaceDescriptor[]>(getConnection()) {
           @Override
@@ -3293,6 +3470,9 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public HTableDescriptor[] listTableDescriptorsByNamespace(final String name) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      return maprHBaseAdmin_.listTableDescriptorsByNamespace(name);
+    }
     return
         executeCallable(new MasterCallable<HTableDescriptor[]>(getConnection()) {
           @Override
@@ -3318,6 +3498,9 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public TableName[] listTableNamesByNamespace(final String name) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      return maprHBaseAdmin_.listTableNamesByNamespace(name);
+    }
     return
         executeCallable(new MasterCallable<TableName[]>(getConnection()) {
           @Override
@@ -3344,12 +3527,19 @@ public class HBaseAdmin implements Admin {
   // Used by tests and by the Merge tool. Merge tool uses it to figure if HBase is up or not.
   public static void checkHBaseAvailable(Configuration conf)
   throws MasterNotRunningException, ZooKeeperConnectionException, ServiceException, IOException {
+    
     //  No-op if MapR is the default engine
     try {
       if(TableMappingRulesFactory.create(conf).getClusterType() == ClusterType.MAPR_ONLY) {
+        LOG.warn("checkHBaseAvailable called for MAPR_ONLY cluster!");
         return;
       }
     } catch (IOException e) { throw new RuntimeException(e); }
+    if (BaseTableMappingRules.isInHBaseService()) {
+      // Calling from the hbase servers, the hbase must be available.
+      return;
+    }
+
     Configuration copyOfConf = HBaseConfiguration.create(conf);
     // We set it to make it fail as soon as possible if HBase is not available
     copyOfConf.setInt(HConstants.HBASE_CLIENT_RETRIES_NUMBER, 1);
@@ -3357,6 +3547,11 @@ public class HBaseAdmin implements Admin {
     copyOfConf.setInt("zookeeper.recovery.retry", 0);
     try (ClusterConnection connection =
         (ClusterConnection)ConnectionFactory.createConnection(copyOfConf)) {
+
+        if (connection instanceof AbstractMapRClusterConnection) {
+          //No-op for MapR cluster
+          return;
+        }
         // Check ZK first.
         // If the connection exists, we may have a connection to ZK that does not work anymore
         ZooKeeperKeepAliveConnection zkw = null;
@@ -3417,6 +3612,15 @@ public class HBaseAdmin implements Admin {
 
   @Override
   public synchronized void close() throws IOException {
+    if (maprHBaseAdmin_ != null) {
+      maprHBaseAdmin_.close();
+      maprHBaseAdmin_ = null;
+    }
+    if (cleanupMapRConnectionOnClose_ && maprConnection_ != null) {
+      maprConnection_.close();
+      maprConnection_ = null;
+    }
+
     if (cleanupConnectionOnClose && this.connection != null && !this.closed) {
       this.connection.close();
       this.closed = true;
@@ -3432,13 +3636,14 @@ public class HBaseAdmin implements Admin {
   @Override
   public HTableDescriptor[] getTableDescriptorsByTableName(final List<TableName> tableNames)
   throws IOException {
-    //Mapr Implementation
-    //List<HTableDescriptor> list = new ArrayList<HTableDescriptor>();
-    //for (TableName tableName : tableNames) {
-    //  list.add(getTableDescriptor(tableName));
-    //}
-    //return list.toArray(new HTableDescriptor[list.size()]);
-
+    if (tableMappingRule_.getClusterType() != ClusterType.HBASE_ONLY) {
+      // TODO: when mapr client supports getTableDescriptorsByTableName, rewrite this part.
+      List<HTableDescriptor> list = new ArrayList<HTableDescriptor>();
+      for (TableName tableName : tableNames) {
+        list.add(getTableDescriptor(tableName));
+      }
+      return list.toArray(new HTableDescriptor[list.size()]);
+    }
     return executeCallable(new MasterCallable<HTableDescriptor[]>(getConnection()) {
       @Override
       public HTableDescriptor[] call(int callTimeout) throws Exception {
@@ -3523,8 +3728,7 @@ public class HBaseAdmin implements Admin {
   public synchronized byte[][] rollHLogWriter(String serverName)
       throws IOException, FailedLogCloseException {
     if (checkIfMapRDefault(true)) {
-      LOG.warn("rollHLogWriter() called for a MapR cluster, returning null.");
-      return null;
+      return maprHBaseAdmin_.rollHLogWriter(serverName);
     }
     ServerName sn = ServerName.valueOf(serverName);
     final RollWALWriterResponse response = rollWALWriterImpl(sn);
@@ -3543,6 +3747,10 @@ public class HBaseAdmin implements Admin {
   @Override
   public synchronized void rollWALWriter(ServerName serverName)
       throws IOException, FailedLogCloseException {
+    if (checkIfMapRDefault(true)) {
+      maprHBaseAdmin_.rollWALWriter(serverName);
+      return;
+    }
     rollWALWriterImpl(serverName);
   }
 
@@ -3550,8 +3758,7 @@ public class HBaseAdmin implements Admin {
   public String[] getMasterCoprocessors() {
     try {
       if (checkIfMapRDefault(true)) {
-        LOG.warn("getMasterCoprocessors() called for a MapR cluster, returning empty.");
-        return new String[0];
+        return maprHBaseAdmin_.getMasterCoprocessors();
       }
       return getClusterStatus().getMasterCoprocessors();
     } catch (IOException e) {
@@ -3636,6 +3843,9 @@ public class HBaseAdmin implements Admin {
   @Override
   public CompactionState getCompactionStateForRegion(final byte[] regionName)
   throws IOException {
+    if (checkIfMapRTable(regionName, true)) {
+      return CompactionState.NONE;
+    }
     try {
       Pair<HRegionInfo, ServerName> regionServerPair = getRegion(regionName);
       if (regionServerPair == null) {
@@ -3784,7 +3994,8 @@ public class HBaseAdmin implements Admin {
                       SnapshotDescription.Type type) throws IOException, SnapshotCreationException,
       IllegalArgumentException {
     if (checkIfMapRTable(tableName, true)) {
-      throw new UnsupportedOperationException("snapshot() called for a MapR Table.");
+      maprHBaseAdmin_.snapshot(snapshotName, tableName, type);
+      return;
     }
 
     tableName = MapRUtil.adjustTableName(tableName);
@@ -3834,6 +4045,10 @@ public class HBaseAdmin implements Admin {
   @Override
   public void snapshot(SnapshotDescription snapshot) throws IOException, SnapshotCreationException,
       IllegalArgumentException {
+     if (checkIfMapRTable(snapshot.getTable(), true)) {
+       maprHBaseAdmin_.snapshot(snapshot);
+       return;
+     }
     // actually take the snapshot
     SnapshotResponse response = takeSnapshotAsync(snapshot);
     final IsSnapshotDoneRequest request = IsSnapshotDoneRequest.newBuilder().setSnapshot(snapshot)
@@ -3886,7 +4101,7 @@ public class HBaseAdmin implements Admin {
   public SnapshotResponse takeSnapshotAsync(SnapshotDescription snapshot) throws IOException,
       SnapshotCreationException {
     if (checkIfMapRTable(snapshot.getTable(), true)) {
-      throw new UnsupportedOperationException("takeSnapshotAsync() called for a MapR Table.");
+      return maprHBaseAdmin_.takeSnapshotAsync(snapshot);
     }
     ClientSnapshotDescriptionUtils.assertSnapshotRequestIsValid(snapshot);
     final SnapshotRequest request = SnapshotRequest.newBuilder().setSnapshot(snapshot)
@@ -3924,7 +4139,7 @@ public class HBaseAdmin implements Admin {
   public boolean isSnapshotFinished(final SnapshotDescription snapshot)
       throws IOException, HBaseSnapshotException, UnknownSnapshotException {
     if (checkIfMapRTable(snapshot.getTable(), true)) {
-      throw new UnsupportedOperationException("isSnapshotFinished() called for a MapR Table.");
+      return maprHBaseAdmin_.isSnapshotFinished(snapshot);
     }
     return executeCallable(new MasterCallable<IsSnapshotDoneResponse>(getConnection()) {
       @Override
@@ -4016,7 +4231,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public void restoreSnapshot(final String snapshotName, boolean takeFailSafeSnapshot)
       throws IOException, RestoreSnapshotException {
-    ensureConnectedToHBase();
+
     TableName tableName = null;
     for (SnapshotDescription snapshotInfo: listSnapshots()) {
       if (snapshotInfo.getName().equals(snapshotName)) {
@@ -4030,9 +4245,10 @@ public class HBaseAdmin implements Admin {
         "Unable to find the table name for snapshot=" + snapshotName);
     }
     if (checkIfMapRTable(tableName, true)) {
-      throw new UnsupportedOperationException("restoreSnapshot called for a MapR Table.");
+      throw new UnsupportedOperationException("restoreSnapshot for a MapR is unsupported.");
     }
 
+    ensureConnectedToHBase();
     // The table does not exists, switch to clone.
     if (!tableExists(tableName)) {
       cloneSnapshot(snapshotName, tableName);
@@ -4153,7 +4369,8 @@ public class HBaseAdmin implements Admin {
   public void cloneSnapshot(final String snapshotName, final TableName tableName)
       throws IOException, TableExistsException, RestoreSnapshotException {
     if (checkIfMapRTable(tableName, true)) {
-      throw new UnsupportedOperationException("cloneSnapshot called for a MapR Table.");
+      maprHBaseAdmin_.cloneSnapshot(snapshotName, tableName);
+      return;
     }
     if (tableExists(tableName)) {
       throw new TableExistsException(tableName);
@@ -4176,6 +4393,9 @@ public class HBaseAdmin implements Admin {
   @Override
   public byte[] execProcedureWithRet(String signature, String instance,
       Map<String, String> props) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      return maprHBaseAdmin_.execProcedureWithRet(signature, instance, props);
+    }
     ProcedureDescription.Builder builder = ProcedureDescription.newBuilder();
     builder.setSignature(signature).setInstance(instance);
     for (Entry<String, String> entry : props.entrySet()) {
@@ -4210,6 +4430,10 @@ public class HBaseAdmin implements Admin {
   @Override
   public void execProcedure(String signature, String instance,
       Map<String, String> props) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      maprHBaseAdmin_.execProcedure(signature, instance, props);
+      return;
+    }
     ProcedureDescription.Builder builder = ProcedureDescription.newBuilder();
     builder.setSignature(signature).setInstance(instance);
     for (Entry<String, String> entry : props.entrySet()) {
@@ -4277,6 +4501,9 @@ public class HBaseAdmin implements Admin {
   @Override
   public boolean isProcedureFinished(String signature, String instance, Map<String, String> props)
       throws IOException {
+    if (checkIfMapRDefault(true)) {
+      return maprHBaseAdmin_.isProcedureFinished(signature, instance, props);
+    }
     final ProcedureDescription.Builder builder = ProcedureDescription.newBuilder();
     builder.setSignature(signature).setInstance(instance);
     for (Entry<String, String> entry : props.entrySet()) {
@@ -4377,6 +4604,9 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public List<SnapshotDescription> listSnapshots() throws IOException {
+    if (checkIfMapRDefault(true)) {
+      return maprHBaseAdmin_.listSnapshots();
+    }
     return executeCallable(new MasterCallable<List<SnapshotDescription>>(getConnection()) {
       @Override
       public List<SnapshotDescription> call(int callTimeout) throws ServiceException {
@@ -4407,6 +4637,9 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public List<SnapshotDescription> listSnapshots(Pattern pattern) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      return maprHBaseAdmin_.listSnapshots(pattern);
+    }
     List<SnapshotDescription> matched = new LinkedList<SnapshotDescription>();
     List<SnapshotDescription> snapshots = listSnapshots();
     for (SnapshotDescription snapshot : snapshots) {
@@ -4434,7 +4667,10 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public void deleteSnapshot(final String snapshotName) throws IOException {
-    ensureConnectedToHBase();
+    if (checkIfMapRDefault(true)) {
+      maprHBaseAdmin_.deleteSnapshot(snapshotName);
+      return;
+    }
     // make sure the snapshot is possibly valid
     TableName.isLegalFullyQualifiedTableName(Bytes.toBytes(snapshotName));
     // do the delete
@@ -4467,7 +4703,10 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public void deleteSnapshots(final Pattern pattern) throws IOException {
-    ensureConnectedToHBase();
+    if (checkIfMapRDefault(true)) {
+        maprHBaseAdmin_.deleteSnapshots(pattern);
+        return;
+    }
     List<SnapshotDescription> snapshots = listSnapshots(pattern);
     for (final SnapshotDescription snapshot : snapshots) {
       try {
@@ -4498,6 +4737,10 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public void setQuota(final QuotaSettings quota) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      throw new UnsupportedOperationException(
+          "setQuota is not supported for MapR.");
+    }
     executeCallable(new MasterCallable<Void>(getConnection()) {
       @Override
       public Void call(int callTimeout) throws ServiceException {
@@ -4515,6 +4758,9 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public QuotaRetriever getQuotaRetriever(final QuotaFilter filter) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      return maprHBaseAdmin_.getQuotaRetriever(filter);
+    }
     return QuotaRetriever.open(conf, filter);
   }
 
@@ -4550,6 +4796,11 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public CoprocessorRpcChannel coprocessorService() {
+    // Here we cannot throw exception, thus, we do not call ensureConnectedToHBase()
+    // The getConnection will return null if cannot connect to hbase.
+    if (isMapRDefault()) {
+      return maprHBaseAdmin_.coprocessorService();
+    }
     return new MasterCoprocessorRpcChannel(getConnection());
   }
 
@@ -4593,11 +4844,20 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public CoprocessorRpcChannel coprocessorService(ServerName sn) {
+    // Here we cannot throw exception, thus, we do not call ensureConnectedToHBase()
+    // The getConnection will return null if cannot connect to hbase.
+    if (isMapRDefault()) {
+      return maprHBaseAdmin_.coprocessorService(sn);
+    }
     return new RegionServerCoprocessorRpcChannel((ClusterConnection) getConnection(), sn);
   }
 
   @Override
   public void updateConfiguration(ServerName server) throws IOException {
+    if (checkIfMapRDefault(true)) {
+      maprHBaseAdmin_.updateConfiguration(server);
+      return;
+    }
     try {
       this.connection.getAdmin(server).updateConfiguration(null,
         UpdateConfigurationRequest.getDefaultInstance());
@@ -4608,6 +4868,10 @@ public class HBaseAdmin implements Admin {
 
   @Override
   public void updateConfiguration() throws IOException {
+    if (checkIfMapRDefault(true)) {
+      maprHBaseAdmin_.updateConfiguration();
+      return;
+    }
     for (ServerName server : this.getClusterStatus().getServers()) {
       updateConfiguration(server);
     }
@@ -4615,7 +4879,9 @@ public class HBaseAdmin implements Admin {
 
   @Override
   public int getMasterInfoPort() throws IOException {
-    // TODO: Fix!  Reaching into internal implementation!!!!
+    if (checkIfMapRDefault(true)) {
+      return maprHBaseAdmin_.getMasterInfoPort();
+    }
     ConnectionManager.HConnectionImplementation connection =
         (ConnectionManager.HConnectionImplementation)this.connection;
     ZooKeeperKeepAliveConnection zkw = connection.getKeepAliveZooKeeperWatcher();
@@ -4628,6 +4894,9 @@ public class HBaseAdmin implements Admin {
 
   @Override
   public long getLastMajorCompactionTimestamp(final TableName tableName) throws IOException {
+    if (checkIfMapRTable(tableName, true)) {
+          return 0;
+    }
     return executeCallable(new MasterCallable<Long>(getConnection()) {
       @Override
       public Long call(int callTimeout) throws ServiceException {
@@ -4641,6 +4910,9 @@ public class HBaseAdmin implements Admin {
 
   @Override
   public long getLastMajorCompactionTimestampForRegion(final byte[] regionName) throws IOException {
+    if (checkIfMapRTable(regionName, true)) {
+      return maprHBaseAdmin_.getLastMajorCompactionTimestampForRegion(regionName);
+    }
     return executeCallable(new MasterCallable<Long>(getConnection()) {
       @Override
       public Long call(int callTimeout) throws ServiceException {
