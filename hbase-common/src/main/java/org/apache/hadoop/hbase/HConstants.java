@@ -1090,6 +1090,11 @@ public final class HConstants {
       "hbase.heap.occupancy.high_water_mark";
   public static final float DEFAULT_HEAP_OCCUPANCY_HIGH_WATERMARK = 0.98f;
 
+  /**
+   * Allow legacy object serialization. Disabled by default because it is a security risk */
+  public static final String ALLOW_LEGACY_OBJECT_SERIALIZATION_KEY =
+      "hbase.allow.legacy.object.serialization";
+
   private HConstants() {
     // Can't be instantiated with this ctor.
   }
