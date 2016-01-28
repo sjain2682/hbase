@@ -28,14 +28,21 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.mapr.fs.MapRFileSystem;
-
 /**
  * <a href="http://www.mapr.com">MapR</a> implementation.
  */
 @InterfaceAudience.Private
 public class FSMapRUtils extends FSUtils {
   private static final Log LOG = LogFactory.getLog(FSMapRUtils.class);
+
+  private static Class<?> MapRFileSystemClass;
+  static {
+    try {
+      MapRFileSystemClass = Class.forName("com.mapr.fs.MapRFileSystem");
+    } catch (ClassNotFoundException e) {
+      MapRFileSystemClass = null;
+    }
+  }
 
   /**
    * @param conf the Configuration of HBase
@@ -46,8 +53,8 @@ public class FSMapRUtils extends FSUtils {
   @Override
   public boolean isSameFileSystem(Configuration conf, FileSystem srcFs, FileSystem desFs) {
 
-    boolean srcIsMapRFs = (srcFs instanceof MapRFileSystem);
-    boolean desIsMapRFs = (desFs instanceof MapRFileSystem);
+    boolean srcIsMapRFs = (MapRFileSystemClass != null && MapRFileSystemClass.isAssignableFrom(srcFs.getClass()));
+    boolean desIsMapRFs = (MapRFileSystemClass != null && MapRFileSystemClass.isAssignableFrom(desFs.getClass()));
     if (srcIsMapRFs && desIsMapRFs) {
       LOG.info("srcFs "+srcFs.getUri()+" is maprfs and desFs "+desFs.getUri()+" is maprfs.");
       return true;
