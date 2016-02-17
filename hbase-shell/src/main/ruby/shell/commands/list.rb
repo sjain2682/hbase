@@ -42,7 +42,7 @@ EOF
               end
             end
             if !masterRunning
-              $stderr.puts "Unable to connect to HBase services. Listing M7 tables from user's home directory."
+              $stderr.puts "Unable to connect to HBase services."
             end
           end
         end
