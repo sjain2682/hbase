@@ -39,7 +39,7 @@
   <groupId>org.apache.hbase</groupId>
   <artifactId>hbase</artifactId>
   <packaging>pom</packaging>
-  <version>1.1.1-mapr-1508-SNAPSHOT</version>
+  <version>1.1.1-mapr-1602-SNAPSHOT</version>
   <name>HBase</name>
   <description>
     Apache HBase is the Hadoop database. Use it when you need
@@ -1123,7 +1123,7 @@
 
     <!-- Dependencies -->
     <!-- Latest versions of Hadoop distributed with MapR -->
-    <mapr.hadoop-two.version>4.1.0-mapr</mapr.hadoop-two.version>
+    <mapr.hadoop-two.version>5.1.0-mapr</mapr.hadoop-two.version>
     <hadoop-two.version>2.7.0-mapr-1506-SNAPSHOT</hadoop-two.version>
 
     <!-- minikdc introduced in hadoop-2.3; override when building earlier versions -->
