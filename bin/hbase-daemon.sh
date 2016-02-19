@@ -127,7 +127,7 @@ wait_for_filesystem()
     while [ $i -lt 600 ]; do
       if [ `expr $i % 60` = "0" ]; then
         # Log message for every 60 seconds
-        echo "`date` Waiting for filesystem to come up"  >> $loglog 2>&1
+        echo "`date` Waiting for filesystem to come up"  >> $HBASE_LOGLOG 2>&1
       fi
       hadoop fs -stat "/" >/dev/null 2>&1
       if [ $? -eq 0 ] ; then
@@ -140,7 +140,7 @@ wait_for_filesystem()
     done
 
     if [ $i -ne 9999 ] ; then
-      echo "`date` Giving up after 600 attempts"  >> $loglog 2>&1
+      echo "`date` Giving up after 600 attempts"  >> $HBASE_LOGLOG 2>&1
       exit 1
     fi
 
@@ -149,15 +149,15 @@ wait_for_filesystem()
     mountDir=$(grep "maprfs://" "${HBASE_CONF_DIR}"/hbase-site.xml | sed "s/^.*maprfs:\/\///" | sed "s/<\/.*$//")
     maprcli volume info -name "${hbaseVolume}" > /dev/null 2>&1
     if [ $? -eq 0 ] ; then
-      echo "`date` HBase root is on volume '${hbaseVolume}'."  >> $loglog 2>&1
+      echo "`date` HBase root is on volume '${hbaseVolume}'."  >> $HBASE_LOGLOG 2>&1
     else
-      echo "`date` HBase volume '${hbaseVolume}' not found, creating."  >> $loglog 2>&1
-      maprcli volume create -name "${hbaseVolume}" -path "${mountDir}" -replicationtype low_latency >> $loglog 2>&1
+      echo "`date` HBase volume '${hbaseVolume}' not found, creating."  >> $HBASE_LOGLOG 2>&1
+      maprcli volume create -name "${hbaseVolume}" -path "${mountDir}" -replicationtype low_latency >> $HBASE_LOGLOG 2>&1
     fi
 
     # set 64M chunksize and turn off compression
-    hadoop mfs -setcompression off "${mountDir}" >> $loglog 2>&1
-    hadoop mfs -setchunksize 67108864 "${mountDir}" >> $loglog 2>&1
+    hadoop mfs -setcompression off "${mountDir}" >> $HBASE_LOGLOG 2>&1
+    hadoop mfs -setchunksize 67108864 "${mountDir}" >> $HBASE_LOGLOG 2>&1
 }
 
 # get log directory
@@ -347,3 +347,4 @@ case $startStop in
   exit 1
   ;;
 esac
+
