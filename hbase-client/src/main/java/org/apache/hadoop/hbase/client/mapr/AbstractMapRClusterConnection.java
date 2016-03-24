@@ -99,6 +99,8 @@ public abstract class AbstractMapRClusterConnection implements ClusterConnection
               new Class[] {Configuration.class, boolean.class, User.class, BaseTableMappingRules.class});
   }
 
+  public abstract User getUser();
+
   public abstract HTableInterface getTable(String tableName) throws IOException;
 
   public abstract HTableInterface getTable(byte[] tableName) throws IOException;
