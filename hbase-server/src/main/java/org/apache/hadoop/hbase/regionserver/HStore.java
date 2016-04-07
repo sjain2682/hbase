@@ -1808,7 +1808,9 @@ public class HStore implements Store {
       // Not split-able if we find a reference store file present in the store.
       boolean result = !hasReferences();
       if (!result) {
-        if (LOG.isTraceEnabled()) LOG.trace("Not splittable; has references: " + this);
+          if (LOG.isTraceEnabled()) {
+            LOG.trace("Not splittable; has references: " + this);
+          }
       }
       return result;
     } finally {
