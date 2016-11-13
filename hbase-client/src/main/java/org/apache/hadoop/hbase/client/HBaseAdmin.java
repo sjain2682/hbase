@@ -2341,7 +2341,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public void closeRegion(final byte [] regionname, final String serverName)
       throws IOException {
-    if (checkIfMapRTable(regionname, true)) {
+    if (checkIfMapRTable(HRegionInfo.getTable(regionname), true)) {
       maprHBaseAdmin_.closeRegion(regionname, serverName);
       return;
     }
@@ -2388,8 +2388,9 @@ public class HBaseAdmin implements Admin {
   @Override
   public boolean closeRegionWithEncodedRegionName(final String encodedRegionName,
       final String serverName) throws IOException {
-    if (checkIfMapRTable(encodedRegionName, true)) {
-      return maprHBaseAdmin_.closeRegionWithEncodedRegionName(encodedRegionName, serverName);
+    byte[] regionName = getRegionName(encodedRegionName.getBytes());
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
+      return maprHBaseAdmin_.closeRegionWithEncodedRegionName(new String(regionName), serverName);
     }
     if (null == serverName || ("").equals(serverName.trim())) {
       throw new IllegalArgumentException(
@@ -2425,7 +2426,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public void closeRegion(final ServerName sn, final HRegionInfo hri)
   throws IOException {
-    if (checkIfMapRTable(hri.getRegionName(), true)) {
+    if (checkIfMapRTable(hri.getTable(), true)) {
       maprHBaseAdmin_.closeRegion(sn, hri);
       return;
     }
@@ -2477,7 +2478,7 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public void flushRegion(byte[] regionName) throws IOException {
-    if (checkIfMapRTable(regionName, true)) {
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
       //What is the difference between alias and name?
       maprHBaseAdmin_.flush(regionName);
       return;
@@ -2511,7 +2512,7 @@ public class HBaseAdmin implements Admin {
   @Deprecated
   public void flush(byte[] tableNameOrRegionName)
   throws IOException, InterruptedException {
-    if (checkIfMapRTable(tableNameOrRegionName, true)) {
+    if (checkIfMapRTable(HRegionInfo.getTable(tableNameOrRegionName), true)) {
       maprHBaseAdmin_.flush(tableNameOrRegionName);
       return;
     }
@@ -2775,7 +2776,8 @@ public class HBaseAdmin implements Admin {
    */
   private void compactRegion(byte[] regionName, final byte[] columnFamily,final boolean major)
   throws IOException {
-    if (checkIfMapRTable(regionName, true)) {
+
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
       maprHBaseAdmin_.compact(regionName, columnFamily, major);
       return;
     }
@@ -2794,7 +2796,7 @@ public class HBaseAdmin implements Admin {
   private void compact(final ServerName sn, final HRegionInfo hri,
       final boolean major, final byte [] family)
   throws IOException {
-    if (checkIfMapRTable(hri.getRegionName(), true)) {
+    if (checkIfMapRTable(hri.getTable(), true)) {
       maprHBaseAdmin_.compact(sn, hri, major, family);
       return;
     }
@@ -2826,8 +2828,9 @@ public class HBaseAdmin implements Admin {
   @Override
   public void move(final byte [] encodedRegionName, final byte [] destServerName)
       throws IOException {
-    if (checkIfMapRTable(encodedRegionName, true)) {
-      maprHBaseAdmin_.move(encodedRegionName, destServerName);
+    byte[] regionName = getRegionName(encodedRegionName);
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
+      maprHBaseAdmin_.move(regionName, destServerName);
       return;
     }
 
@@ -2869,7 +2872,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public void assign(final byte[] regionName) throws MasterNotRunningException,
       ZooKeeperConnectionException, IOException {
-    if (checkIfMapRTable(regionName, true)) {
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
       maprHBaseAdmin_.assign(regionName);
       return;
     }
@@ -2909,7 +2912,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public void unassign(final byte [] regionName, final boolean force)
   throws MasterNotRunningException, ZooKeeperConnectionException, IOException {
-    if (checkIfMapRTable(regionName, true)) {
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
       maprHBaseAdmin_.unassign(regionName, force);
       return;
     }
@@ -2946,7 +2949,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public void offline(final byte [] regionName)
   throws IOException, ZooKeeperConnectionException {
-    if (checkIfMapRTable(regionName, true)) {
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
       maprHBaseAdmin_.offline(regionName);
       return;
     }
@@ -3118,9 +3121,12 @@ public class HBaseAdmin implements Admin {
   public void mergeRegions(final byte[] encodedNameOfRegionA,
       final byte[] encodedNameOfRegionB, final boolean forcible)
       throws IOException {
-    if (checkIfMapRTable(encodedNameOfRegionA, true) ||
-        checkIfMapRTable(encodedNameOfRegionB, true)) {
-        maprHBaseAdmin_.mergeRegions(encodedNameOfRegionA, encodedNameOfRegionB, forcible);
+
+    byte[] regionNameA = getRegionName(encodedNameOfRegionA);
+    byte[] regionNameB = getRegionName(encodedNameOfRegionB);
+    if (checkIfMapRTable(HRegionInfo.getTable(regionNameA), true) ||
+        checkIfMapRTable(HRegionInfo.getTable(regionNameB), true)) {
+        maprHBaseAdmin_.mergeRegions(regionNameA, regionNameB, forcible);
         return;
     }
 
@@ -3269,7 +3275,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public void splitRegion(byte[] regionName, final byte [] splitPoint)
   throws IOException {
-    if (checkIfMapRTable(regionName, true)) {
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
       maprHBaseAdmin_.split(regionName, splitPoint);
       return;
     }
@@ -4119,7 +4125,7 @@ public class HBaseAdmin implements Admin {
   @Override
   public CompactionState getCompactionStateForRegion(final byte[] regionName)
   throws IOException {
-    if (checkIfMapRTable(regionName, true)) {
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
       return CompactionState.NONE;
     }
     try {
@@ -5225,7 +5231,7 @@ public class HBaseAdmin implements Admin {
 
   @Override
   public long getLastMajorCompactionTimestampForRegion(final byte[] regionName) throws IOException {
-    if (checkIfMapRTable(regionName, true)) {
+    if (checkIfMapRTable(HRegionInfo.getTable(regionName), true)) {
       return maprHBaseAdmin_.getLastMajorCompactionTimestampForRegion(regionName);
     }
     return executeCallable(new MasterCallable<Long>(getConnection()) {
