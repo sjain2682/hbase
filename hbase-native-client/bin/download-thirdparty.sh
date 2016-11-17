@@ -39,7 +39,9 @@ cd ${HBASE_TP_DIR}
 
 if [ ! -d ${HBASE_GTEST_DIR} ]; then
   echo "Fetching gtest"
-  wget -c http://googletest.googlecode.com/files/gtest-${HBASE_GTEST_VERSION}.zip
+  #wget -c http://googletest.googlecode.com/files/gtest-${HBASE_GTEST_VERSION}.zip
+  wget -c https://github.com/google/googletest/archive/release-${HBASE_GTEST_VERSION}.tar.gz
+  mv release-${HBASE_GTEST_VERSION}.tar.gz gtest-${HBASE_GTEST_VERSION}
   unzip gtest-${HBASE_GTEST_VERSION}.zip
   rm gtest-${HBASE_GTEST_VERSION}.zip
 fi

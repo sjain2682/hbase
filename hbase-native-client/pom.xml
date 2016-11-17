@@ -49,7 +49,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <gtest.version>1.7.0</gtest.version>
-    <gtest.md5>2d6ec8ccdf5c46b05ba54a9fd1d130d7</gtest.md5>
+    <gtest.md5>ef5e700c8a0f3ee123e2e0209b8b4961</gtest.md5>
   </properties>
 
   <build>
@@ -75,7 +75,7 @@
             <inherited>false</inherited>
             <configuration>
               <skip>${maven.test.skip}</skip>
-              <url>http://googletest.googlecode.com/files/gtest-${gtest.version}.zip</url>
+	      <url>https://github.com/google/googletest/archive/release-${gtest.version}.zip</url>
               <unpack>true</unpack>
               <outputDirectory>${project.build.directory}</outputDirectory>
               <md5>${gtest.md5}</md5>
