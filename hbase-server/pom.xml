@@ -23,11 +23,11 @@
   <parent>
     <artifactId>hbase</artifactId>
     <groupId>org.apache.hbase</groupId>
-    <version>1.1.8</version>
+    <version>1.1.8-mapr-1702-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>hbase-server</artifactId>
-  <name>Apache HBase - Server</name>
+  <name>HBase - Server</name>
   <description>Main functionality for HBase</description>
   <properties>
     <test.build.webapps>target/test-classes/webapps</test.build.webapps>

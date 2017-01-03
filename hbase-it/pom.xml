@@ -23,12 +23,12 @@
   <parent>
     <artifactId>hbase</artifactId>
     <groupId>org.apache.hbase</groupId>
-    <version>1.1.8</version>
+    <version>1.1.8-mapr-1702-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
 
   <artifactId>hbase-it</artifactId>
-  <name>Apache HBase - Integration Tests</name>
+  <name>HBase - Integration Tests</name>
   <description>Integration and System tests for HBase</description>
 
   <properties>

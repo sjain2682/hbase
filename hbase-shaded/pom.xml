@@ -23,11 +23,11 @@
     <parent>
         <artifactId>hbase</artifactId>
         <groupId>org.apache.hbase</groupId>
-        <version>1.1.8</version>
+        <version>1.1.8-mapr-1702-SNAPSHOT</version>
         <relativePath>..</relativePath>
     </parent>
     <artifactId>hbase-shaded</artifactId>
-    <name>Apache HBase - Shaded</name>
+    <name>HBase - Shaded</name>
     <description>Module of HBase with most deps shaded.</description>
     <packaging>pom</packaging>
     <properties>

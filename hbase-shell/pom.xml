@@ -23,11 +23,11 @@
   <parent>
     <artifactId>hbase</artifactId>
     <groupId>org.apache.hbase</groupId>
-    <version>1.1.8</version>
+    <version>1.1.8-mapr-1702-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>hbase-shell</artifactId>
-  <name>Apache HBase - Shell</name>
+  <name>HBase - Shell</name>
   <description>Shell for HBase</description>
   <build>
     <!-- Makes sure the resources get added before they are processed

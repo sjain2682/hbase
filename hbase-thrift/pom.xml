@@ -23,11 +23,11 @@
   <parent>
     <artifactId>hbase</artifactId>
     <groupId>org.apache.hbase</groupId>
-    <version>1.1.8</version>
+    <version>1.1.8-mapr-1702-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
   <artifactId>hbase-thrift</artifactId>
-  <name>Apache HBase - Thrift</name>
+  <name>HBase - Thrift</name>
   <description>HBase Thrift Server</description>
 
   <build>
