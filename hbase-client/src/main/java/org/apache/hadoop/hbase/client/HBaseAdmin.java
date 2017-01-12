@@ -562,6 +562,10 @@ public class HBaseAdmin implements Admin {
   public boolean abortProcedure(
       final long procId,
       final boolean mayInterruptIfRunning) throws IOException {
+    if (checkIfMapRDefault(true /*connectToHBaseOtherwise*/)) {
+      return maprHBaseAdmin_.abortProcedure(procId, mayInterruptIfRunning);
+    }
+
     Future<Boolean> future = abortProcedureAsync(procId, mayInterruptIfRunning);
     try {
       return future.get(syncWaitTimeout, TimeUnit.MILLISECONDS);
@@ -594,6 +598,10 @@ public class HBaseAdmin implements Admin {
   public Future<Boolean> abortProcedureAsync(
       final long procId,
       final boolean mayInterruptIfRunning) throws IOException {
+    if (checkIfMapRDefault(true /*connectToHBaseOtherwise*/)) {
+      return maprHBaseAdmin_.abortProcedureAsync(procId, mayInterruptIfRunning);
+    }
+
     Boolean abortProcResponse = executeCallable(
       new MasterCallable<AbortProcedureResponse>(getConnection()) {
         @Override
@@ -3717,6 +3725,10 @@ public class HBaseAdmin implements Admin {
    */
   @Override
   public ProcedureInfo[] listProcedures() throws IOException {
+    if (checkIfMapRDefault(true /*connectToHBaseOtherwise*/)) {
+      return maprHBaseAdmin_.listProcedures();
+    }
+
     return
         executeCallable(new MasterCallable<ProcedureInfo[]>(getConnection()) {
           @Override
