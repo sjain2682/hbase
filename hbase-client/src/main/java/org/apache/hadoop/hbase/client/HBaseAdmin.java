@@ -296,8 +296,10 @@ public class HBaseAdmin implements Admin {
         "hbase.client.retries.longer.multiplier", 10);
     this.syncWaitTimeout = this.conf.getInt(
         "hbase.client.sync.wait.timeout.msec", 10 * 60000); // 10min
-    this.rpcCallerFactory = RpcRetryingCallerFactory.instantiate(this.conf,
-        connection.getStatisticsTracker());
+    this.rpcCallerFactory = connection.getRpcRetryingCallerFactory();
+    this.rpcControllerFactory = connection.getRpcControllerFactory();
+
+    this.ng = this.connection.getNonceGenerator();
   }
 
   @Override
