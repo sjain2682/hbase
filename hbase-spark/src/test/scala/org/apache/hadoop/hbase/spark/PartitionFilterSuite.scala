@@ -18,11 +18,12 @@
 package org.apache.hadoop.hbase.spark
 
 import org.apache.hadoop.hbase.spark.datasources.HBaseSparkConf
-import org.apache.hadoop.hbase.{TableName, HBaseTestingUtility}
+import org.apache.hadoop.hbase.{HBaseTestingUtility, TableName}
 import org.apache.spark.sql.datasources.hbase.HBaseTableCatalog
 import org.apache.spark.sql.{DataFrame, SQLContext}
-import org.apache.spark.{SparkConf, SparkContext, Logging}
+import org.apache.spark.{SparkConf, SparkContext}
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
+import org.slf4j.LoggerFactory
 
 case class FilterRangeRecord(
                               intCol0: Int,
@@ -50,7 +51,10 @@ object FilterRangeRecord {
 }
 
 class PartitionFilterSuite extends FunSuite with
-  BeforeAndAfterEach with BeforeAndAfterAll with Logging {
+  BeforeAndAfterEach with BeforeAndAfterAll {
+
+  val logger = LoggerFactory.getLogger(classOf[PartitionFilterSuite])
+
   @transient var sc: SparkContext = null
   var TEST_UTIL: HBaseTestingUtility = new HBaseTestingUtility
 
@@ -79,7 +83,7 @@ class PartitionFilterSuite extends FunSuite with
   }
 
   override def afterAll() {
-    logInfo("shutting down minicluster")
+    logger.info("shutting down minicluster")
     TEST_UTIL.shutdownMiniCluster()
 
     sc.stop()

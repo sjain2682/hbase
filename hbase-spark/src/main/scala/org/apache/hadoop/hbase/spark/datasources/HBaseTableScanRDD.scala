@@ -25,8 +25,9 @@ import org.apache.hadoop.hbase.spark.hbase._
 import org.apache.hadoop.hbase.spark.datasources.HBaseResources._
 import org.apache.hadoop.hbase.util.ShutdownHookManager
 import org.apache.spark.sql.datasources.hbase.Field
-import org.apache.spark.{SparkEnv, TaskContext, Logging, Partition}
+import org.apache.spark.{Partition, SparkEnv, TaskContext}
 import org.apache.spark.rdd.RDD
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
@@ -34,7 +35,9 @@ class HBaseTableScanRDD(relation: HBaseRelation,
                        val hbaseContext: HBaseContext,
                        @transient val filter: Option[SparkSQLPushDownFilter] = None,
                         val columns: Seq[Field] = Seq.empty
-     )extends RDD[Result](relation.sqlContext.sparkContext, Nil) with Logging  {
+     )extends RDD[Result](relation.sqlContext.sparkContext, Nil)  {
+  val logger = LoggerFactory.getLogger(classOf[HBaseTableScanRDD])
+
   private def sparkConf = SparkEnv.get.conf
   @transient var ranges = Seq.empty[Range]
   @transient var points = Seq.empty[Array[Byte]]
@@ -71,13 +74,13 @@ class HBaseTableScanRDD(relation: HBaseRelation,
   override def getPartitions: Array[Partition] = {
     val regions = RegionResource(relation)
     var idx = 0
-    logDebug(s"There are ${regions.size} regions")
+    logger.debug(s"There are ${regions.size} regions")
     val ps = regions.flatMap { x =>
       val rs = Ranges.and(Range(x), ranges)
       val ps = Points.and(Range(x), points)
       if (rs.size > 0 || ps.size > 0) {
-        if(log.isDebugEnabled) {
-          rs.foreach(x => logDebug(x.toString))
+        if(logger.isDebugEnabled) {
+          rs.foreach(x => logger.debug(x.toString))
         }
         idx += 1
         Some(HBaseScanPartition(idx - 1, x, rs, ps, SerializedFilter.toSerializedTypedFilter(filter)))
@@ -107,7 +110,7 @@ class HBaseTableScanRDD(relation: HBaseRelation,
       columns: Seq[Field],
       hbaseContext: HBaseContext): Iterator[Result] = {
     g.grouped(relation.bulkGetSize).flatMap{ x =>
-      val gets = new ArrayList[Get](x.size)
+      val gets = new ArrayList[Get]()
       x.foreach{ y =>
         val g = new Get(y)
         handleTimeSemantics(g)

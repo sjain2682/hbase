@@ -18,9 +18,8 @@
 package org.apache.hadoop.hbase.spark.datasources
 
 import org.apache.hadoop.hbase.spark.datasources.JavaBytesEncoder.JavaBytesEncoder
-import org.apache.hadoop.hbase.util.Bytes
-import org.apache.spark.Logging
 import org.apache.spark.sql.types._
+import org.slf4j.LoggerFactory
 
 /**
   * The ranges for the data type whose size is known. Whether the bound is inclusive
@@ -83,10 +82,11 @@ trait BytesEncoder {
   def ranges(in: Any): Option[BoundRanges]
 }
 
-object JavaBytesEncoder extends Enumeration with Logging{
+object JavaBytesEncoder extends Enumeration {
   type JavaBytesEncoder = Value
   val Greater, GreaterEqual, Less, LessEqual, Equal, Unknown = Value
 
+  val logger = LoggerFactory.getLogger(classOf[JavaBytesEncoder])
   /**
     * create the encoder/decoder
     *
@@ -98,7 +98,7 @@ object JavaBytesEncoder extends Enumeration with Logging{
       Class.forName(clsName).newInstance.asInstanceOf[BytesEncoder]
     } catch {
       case _: Throwable =>
-        logWarning(s"$clsName cannot be initiated, falling back to naive encoder")
+        logger.warn(s"$clsName cannot be initiated, falling back to naive encoder")
         new NaiveEncoder()
     }
   }

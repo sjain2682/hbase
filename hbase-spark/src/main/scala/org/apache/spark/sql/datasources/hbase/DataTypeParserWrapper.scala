@@ -17,14 +17,9 @@
 
 package org.apache.spark.sql.datasources.hbase
 
-import org.apache.spark.sql.catalyst.SqlLexical
-import org.apache.spark.sql.catalyst.util.DataTypeParser
+import org.apache.spark.sql.catalyst.parser.CatalystSqlParser
 import org.apache.spark.sql.types.DataType
 
 object DataTypeParserWrapper {
-  lazy val dataTypeParser = new DataTypeParser {
-    override val lexical = new SqlLexical
-  }
-
-  def parse(dataTypeString: String): DataType = dataTypeParser.toDataType(dataTypeString)
+  def parse(dataTypeString: String): DataType =CatalystSqlParser.parseDataType(dataTypeString)
 }

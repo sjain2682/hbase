@@ -20,7 +20,7 @@ package org.apache.hadoop.hbase.spark.example.rdd
 import org.apache.hadoop.hbase.client.Put
 import org.apache.hadoop.hbase.spark.HBaseContext
 import org.apache.hadoop.hbase.spark.HBaseRDDFunctions._
-import org.apache.hadoop.hbase.util.Bytes
+import org.apache.hadoop.hbase.util.Bytes._
 import org.apache.hadoop.hbase.{HBaseConfiguration, TableName}
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -45,16 +45,16 @@ object HBaseBulkPutExample {
      try {
        //[(Array[Byte], Array[(Array[Byte], Array[Byte], Array[Byte])])]
        val rdd = sc.parallelize(Array(
-         (Bytes.toBytes("1"),
-           Array((Bytes.toBytes(columnFamily), Bytes.toBytes("1"), Bytes.toBytes("1")))),
-         (Bytes.toBytes("2"),
-           Array((Bytes.toBytes(columnFamily), Bytes.toBytes("1"), Bytes.toBytes("2")))),
-         (Bytes.toBytes("3"),
-           Array((Bytes.toBytes(columnFamily), Bytes.toBytes("1"), Bytes.toBytes("3")))),
-         (Bytes.toBytes("4"),
-           Array((Bytes.toBytes(columnFamily), Bytes.toBytes("1"), Bytes.toBytes("4")))),
-         (Bytes.toBytes("5"),
-           Array((Bytes.toBytes(columnFamily), Bytes.toBytes("1"), Bytes.toBytes("5"))))
+         (toBytes("1"),
+           Array((toBytes(columnFamily), toBytes("1"), toBytes("1")))),
+         (toBytes("2"),
+           Array((toBytes(columnFamily), toBytes("1"), toBytes("2")))),
+         (toBytes("3"),
+           Array((toBytes(columnFamily), toBytes("1"), toBytes("3")))),
+         (toBytes("4"),
+           Array((toBytes(columnFamily), toBytes("1"), toBytes("4")))),
+         (toBytes("5"),
+           Array((toBytes(columnFamily), toBytes("1"), toBytes("5"))))
        ))
 
        val conf = HBaseConfiguration.create()

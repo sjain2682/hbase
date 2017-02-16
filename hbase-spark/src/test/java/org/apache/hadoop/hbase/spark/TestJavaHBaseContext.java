@@ -40,7 +40,6 @@ import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.spark.example.hbasecontext.JavaHBaseBulkDeleteExample;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
-import org.apache.hadoop.hbase.testclassification.MiscTests;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.spark.api.java.*;
 import org.apache.spark.api.java.function.Function;
@@ -51,7 +50,7 @@ import scala.Tuple2;
 
 import com.google.common.io.Files;
 
-@Category({MiscTests.class, MediumTests.class})
+@Category({MediumTests.class})
 public class TestJavaHBaseContext implements Serializable {
   private transient JavaSparkContext jsc;
   HBaseTestingUtility htu;
@@ -117,7 +116,7 @@ public class TestJavaHBaseContext implements Serializable {
   @Test
   public void testBulkPut() throws IOException {
 
-    List<String> list = new ArrayList<>(5);
+    List<String> list = new ArrayList<>();
     list.add("1," + columnFamilyStr + ",a,1");
     list.add("2," + columnFamilyStr + ",a,2");
     list.add("3," + columnFamilyStr + ",a,3");
@@ -134,7 +133,7 @@ public class TestJavaHBaseContext implements Serializable {
     Table table = conn.getTable(TableName.valueOf(tableName));
 
     try {
-      List<Delete> deletes = new ArrayList<>(5);
+      List<Delete> deletes = new ArrayList<>();
       for (int i = 1; i < 6; i++) {
         deletes.add(new Delete(Bytes.toBytes(Integer.toString(i))));
       }
@@ -186,7 +185,7 @@ public class TestJavaHBaseContext implements Serializable {
 
   @Test
   public void testBulkDelete() throws IOException {
-    List<byte[]> list = new ArrayList<>(3);
+    List<byte[]> list = new ArrayList<>();
     list.add(Bytes.toBytes("1"));
     list.add(Bytes.toBytes("2"));
     list.add(Bytes.toBytes("3"));
@@ -255,7 +254,7 @@ public class TestJavaHBaseContext implements Serializable {
 
   @Test
   public void testBulkGet() throws IOException {
-    List<byte[]> list = new ArrayList<>(5);
+    List<byte[]> list = new ArrayList<>();
     list.add(Bytes.toBytes("1"));
     list.add(Bytes.toBytes("2"));
     list.add(Bytes.toBytes("3"));
@@ -324,7 +323,7 @@ public class TestJavaHBaseContext implements Serializable {
       Connection conn = ConnectionFactory.createConnection(conf);
       Table table = conn.getTable(tableName)) {
 
-      List<Put> puts = new ArrayList<>(5);
+      List<Put> puts = new ArrayList<>();
 
       for (int i = 1; i < 6; i++) {
         Put put = new Put(Bytes.toBytes(Integer.toString(i)));

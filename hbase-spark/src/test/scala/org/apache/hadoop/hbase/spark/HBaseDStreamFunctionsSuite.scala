@@ -18,17 +18,21 @@ package org.apache.hadoop.hbase.spark
 
 import org.apache.hadoop.hbase.client._
 import org.apache.hadoop.hbase.util.Bytes
-import org.apache.hadoop.hbase.{CellUtil, TableName, HBaseTestingUtility}
+import org.apache.hadoop.hbase.{CellUtil, HBaseTestingUtility, TableName}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.{Milliseconds, StreamingContext}
-import org.apache.spark.{SparkContext, Logging}
+import org.apache.spark.SparkContext
 import org.apache.hadoop.hbase.spark.HBaseDStreamFunctions._
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
 class HBaseDStreamFunctionsSuite  extends FunSuite with
-BeforeAndAfterEach with BeforeAndAfterAll with Logging {
+  BeforeAndAfterEach with BeforeAndAfterAll {
+
+  val logger = LoggerFactory.getLogger(classOf[HBaseDStreamFunctionsSuite])
+
   @transient var sc: SparkContext = null
 
   var TEST_UTIL: HBaseTestingUtility = new HBaseTestingUtility
@@ -40,16 +44,16 @@ BeforeAndAfterEach with BeforeAndAfterAll with Logging {
 
     TEST_UTIL.startMiniCluster()
 
-    logInfo(" - minicluster started")
+    logger.info(" - minicluster started")
     try
       TEST_UTIL.deleteTable(TableName.valueOf(tableName))
     catch {
-      case e: Exception => logInfo(" - no table " + tableName + " found")
+      case e: Exception => logger.info(" - no table " + tableName + " found")
 
     }
-    logInfo(" - creating table " + tableName)
+    logger.info(" - creating table " + tableName)
     TEST_UTIL.createTable(TableName.valueOf(tableName), Bytes.toBytes(columnFamily))
-    logInfo(" - created table")
+    logger.info(" - created table")
 
     sc = new SparkContext("local", "test")
   }

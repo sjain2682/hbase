@@ -26,8 +26,9 @@ import org.apache.hadoop.hbase.{HBaseTestingUtility, TableName}
 import org.apache.spark.sql.datasources.hbase.HBaseTableCatalog
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SQLContext}
-import org.apache.spark.{Logging, SparkConf, SparkContext}
+import org.apache.spark.{SparkConf, SparkContext}
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
+import org.slf4j.LoggerFactory
 
 case class HBaseRecord(
   col0: String,
@@ -83,7 +84,10 @@ object AvroHBaseKeyRecord {
 }
 
 class DefaultSourceSuite extends FunSuite with
-BeforeAndAfterEach with BeforeAndAfterAll with Logging {
+  BeforeAndAfterEach with BeforeAndAfterAll {
+
+  val logger = LoggerFactory.getLogger(classOf[DefaultSourceSuite])
+
   @transient var sc: SparkContext = null
   var TEST_UTIL: HBaseTestingUtility = new HBaseTestingUtility
 
@@ -98,23 +102,23 @@ BeforeAndAfterEach with BeforeAndAfterAll with Logging {
 
     TEST_UTIL.startMiniCluster
 
-    logInfo(" - minicluster started")
+    logger.info(" - minicluster started")
     try
       TEST_UTIL.deleteTable(TableName.valueOf(t1TableName))
     catch {
-      case e: Exception => logInfo(" - no table " + t1TableName + " found")
+      case e: Exception => logger.info(" - no table " + t1TableName + " found")
     }
     try
       TEST_UTIL.deleteTable(TableName.valueOf(t2TableName))
     catch {
-      case e: Exception => logInfo(" - no table " + t2TableName + " found")
+      case e: Exception => logger.info(" - no table " + t2TableName + " found")
     }
-    logInfo(" - creating table " + t1TableName)
+    logger.info(" - creating table " + t1TableName)
     TEST_UTIL.createTable(TableName.valueOf(t1TableName), Bytes.toBytes(columnFamily))
-    logInfo(" - created table")
-    logInfo(" - creating table " + t2TableName)
+    logger.info(" - created table")
+    logger.info(" - creating table " + t2TableName)
     TEST_UTIL.createTable(TableName.valueOf(t2TableName), Bytes.toBytes(columnFamily))
-    logInfo(" - created table")
+    logger.info(" - created table")
     val sparkConf = new SparkConf
     sparkConf.set(HBaseSparkConf.BLOCK_CACHE_ENABLE, "true")
     sparkConf.set(HBaseSparkConf.BATCH_NUM, "100")
@@ -232,7 +236,7 @@ BeforeAndAfterEach with BeforeAndAfterAll with Logging {
 
   override def afterAll() {
     TEST_UTIL.deleteTable(TableName.valueOf(t1TableName))
-    logInfo("shuting down minicluster")
+    logger.info("shuting down minicluster")
     TEST_UTIL.shutdownMiniCluster()
 
     sc.stop()

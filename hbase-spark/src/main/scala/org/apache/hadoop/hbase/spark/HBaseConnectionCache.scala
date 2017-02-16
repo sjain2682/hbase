@@ -25,11 +25,12 @@ import org.apache.hadoop.hbase.ipc.RpcControllerFactory
 import org.apache.hadoop.hbase.security.{User, UserProvider}
 import org.apache.hadoop.hbase.spark.datasources.HBaseSparkConf
 import org.apache.hadoop.hbase.{HConstants, TableName}
-import org.apache.spark.Logging
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
-private[spark] object HBaseConnectionCache extends Logging {
+private[spark] object HBaseConnectionCache {
+  val logger = LoggerFactory.getLogger("HBaseConnectionCache")
 
   // A hashmap of Spark-HBase connections. Key is HBaseConnectionKey.
   val connectionMap = new mutable.HashMap[HBaseConnectionKey, SmartConnection]()
@@ -78,7 +79,7 @@ private[spark] object HBaseConnectionCache extends Logging {
         HBaseConnectionCache.performHousekeeping(true)
       }
     } catch {
-      case e: Exception => logWarning("Error in finalHouseKeeping", e)
+      case e: Exception => logger.warn("Error in finalHouseKeeping", e)
     }
   }
 
@@ -88,14 +89,14 @@ private[spark] object HBaseConnectionCache extends Logging {
       connectionMap.foreach {
         x => {
           if(x._2.refCount < 0) {
-            logError(s"Bug to be fixed: negative refCount of connection ${x._2}")
+            logger.error(s"Bug to be fixed: negative refCount of connection ${x._2}")
           }
 
           if(forceClean || ((x._2.refCount <= 0) && (tsNow - x._2.timestamp > timeout))) {
             try{
               x._2.connection.close()
             } catch {
-              case e: IOException => logWarning(s"Fail to close connection ${x._2}", e)
+              case e: IOException => logger.error(s"Fail to close connection ${x._2}", e)
             }
             connectionMap.remove(x._1)
           }
@@ -154,7 +155,9 @@ private[hbase] case class SmartConnection (
  * that may be used in the process of establishing a connection.
  *
  */
-class HBaseConnectionKey(c: Configuration) extends Logging {
+class HBaseConnectionKey(c: Configuration) {
+  val logger = LoggerFactory.getLogger("HBaseConnectionCache")
+
   val conf: Configuration = c
   val CONNECTION_PROPERTIES: Array[String] = Array[String](
     HConstants.ZOOKEEPER_QUORUM,
@@ -188,7 +191,7 @@ class HBaseConnectionKey(c: Configuration) extends Logging {
     }
     catch {
       case e: IOException => {
-        logWarning("Error obtaining current user, skipping username in HBaseConnectionKey", e)
+        logger.warn("Error obtaining current user, skipping username in HBaseConnectionKey", e)
       }
     }
   }

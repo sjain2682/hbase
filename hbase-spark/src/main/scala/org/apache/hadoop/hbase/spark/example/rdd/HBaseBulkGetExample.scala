@@ -47,9 +47,7 @@ object HBaseBulkGetExample {
         Bytes.toBytes("2"),
         Bytes.toBytes("3"),
         Bytes.toBytes("4"),
-        Bytes.toBytes("5"),
-        Bytes.toBytes("6"),
-        Bytes.toBytes("7")))
+        Bytes.toBytes("5")))
 
       val conf = HBaseConfiguration.create()
 

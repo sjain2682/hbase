@@ -17,14 +17,16 @@
 package org.apache.hadoop.hbase.spark
 
 import org.apache.hadoop.hbase.client._
-import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter
 import org.apache.hadoop.hbase.util.Bytes
-import org.apache.hadoop.hbase.{ CellUtil, TableName, HBaseTestingUtility}
-import org.apache.spark.{SparkException, Logging, SparkContext}
+import org.apache.hadoop.hbase.{CellUtil, HBaseTestingUtility, TableName}
+import org.apache.spark.{SparkContext, SparkException}
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
+import org.slf4j.LoggerFactory
 
 class HBaseContextSuite extends FunSuite with
-BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
+  BeforeAndAfterEach with BeforeAndAfterAll  {
+
+  val logger = LoggerFactory.getLogger(classOf[DefaultSourceSuite])
 
   @transient var sc: SparkContext = null
   var TEST_UTIL = new HBaseTestingUtility
@@ -34,17 +36,17 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
 
   override def beforeAll() {
     TEST_UTIL.startMiniCluster()
-    logInfo(" - minicluster started")
+    logger.info(" - minicluster started")
 
     try {
       TEST_UTIL.deleteTable(TableName.valueOf(tableName))
     } catch {
       case e: Exception =>
-        logInfo(" - no table " + tableName + " found")
+        logger.info(" - no table " + tableName + " found")
     }
-    logInfo(" - creating table " + tableName)
+    logger.info(" - creating table " + tableName)
     TEST_UTIL.createTable(TableName.valueOf(tableName), Bytes.toBytes(columnFamily))
-    logInfo(" - created table")
+    logger.info(" - created table")
 
     val envMap = Map[String,String](("Xmx", "512m"))
 
@@ -52,9 +54,9 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
   }
 
   override def afterAll() {
-    logInfo("shuting down minicluster")
+    logger.info("shuting down minicluster")
     TEST_UTIL.shutdownMiniCluster()
-    logInfo(" - minicluster shut down")
+    logger.info(" - minicluster shut down")
     TEST_UTIL.cleanupTestDir()
     sc.stop()
   }
@@ -312,9 +314,6 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
       put = new Put(Bytes.toBytes("scan2"))
       put.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes("a"), Bytes.toBytes("foo2"))
       table.put(put)
-      put = new Put(Bytes.toBytes("scan2"))
-      put.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes("b"), Bytes.toBytes("foo-2"))
-      table.put(put)
       put = new Put(Bytes.toBytes("scan3"))
       put.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes("a"), Bytes.toBytes("foo3"))
       table.put(put)
@@ -332,23 +331,15 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
     val hbaseContext = new HBaseContext(sc, config)
 
     val scan = new Scan()
-    val filter = new FirstKeyOnlyFilter()
     scan.setCaching(100)
     scan.setStartRow(Bytes.toBytes("scan2"))
     scan.setStopRow(Bytes.toBytes("scan4_"))
-    scan.setFilter(filter)
 
     val scanRdd = hbaseContext.hbaseRDD(TableName.valueOf(tableName), scan)
 
     try {
       val scanList = scanRdd.map(r => r._1.copyBytes()).collect()
       assert(scanList.length == 3)
-      var cnt = 0
-      scanRdd.map(r => r._2.listCells().size()).collect().foreach(l => {
-        cnt += l
-      })
-      // the number of cells returned would be 4 without the Filter
-      assert(cnt == 3);
     } catch {
       case ex: Exception => ex.printStackTrace()
     }

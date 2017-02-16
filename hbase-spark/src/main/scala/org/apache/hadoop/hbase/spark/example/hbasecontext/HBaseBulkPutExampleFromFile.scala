@@ -48,7 +48,7 @@ object HBaseBulkPutExampleFromFile {
     val sc = new SparkContext(sparkConf)
 
     try {
-      var rdd = sc.hadoopFile(
+      val rdd = sc.hadoopFile(
         inputFile,
         classOf[TextInputFormat],
         classOf[LongWritable],
@@ -65,8 +65,9 @@ object HBaseBulkPutExampleFromFile {
         (putRecord) => {
           System.out.println("hbase-" + putRecord)
           val put = new Put(Bytes.toBytes("Value- " + putRecord))
-          put.addColumn(Bytes.toBytes("c"), Bytes.toBytes("1"),
+          put.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes("1"),
             Bytes.toBytes(putRecord.length()))
+
           put
         });
     } finally {

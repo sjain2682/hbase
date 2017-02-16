@@ -18,18 +18,22 @@
 package org.apache.hadoop.hbase.spark
 
 import org.apache.hadoop.fs.{FileSystem, Path}
-import org.apache.hadoop.hbase.client.{Get, ConnectionFactory}
+import org.apache.hadoop.hbase.client.{ConnectionFactory, Get}
 import org.apache.hadoop.hbase.io.hfile.{CacheConfig, HFile}
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles
-import org.apache.hadoop.hbase.{HConstants, CellUtil, HBaseTestingUtility, TableName}
+import org.apache.hadoop.hbase.{CellUtil, HBaseTestingUtility, HConstants, TableName}
 import org.apache.hadoop.hbase.util.Bytes
 import org.apache.hadoop.hbase.spark.HBaseRDDFunctions._
-import org.apache.spark.{SparkContext, Logging}
+import org.apache.spark.SparkContext
 import org.junit.rules.TemporaryFolder
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
+import org.slf4j.LoggerFactory
 
 class BulkLoadSuite extends FunSuite with
-BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
+    BeforeAndAfterEach with BeforeAndAfterAll {
+
+  val logger = LoggerFactory.getLogger(classOf[BulkLoadSuite])
+
   @transient var sc: SparkContext = null
   var TEST_UTIL = new HBaseTestingUtility
 
@@ -41,16 +45,16 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
 
   override def beforeAll() {
     TEST_UTIL.startMiniCluster()
-    logInfo(" - minicluster started")
+    logger.info(" - minicluster started")
 
     try {
       TEST_UTIL.deleteTable(TableName.valueOf(tableName))
     } catch {
       case e: Exception =>
-        logInfo(" - no table " + tableName + " found")
+        logger.info(" - no table " + tableName + " found")
     }
 
-    logInfo(" - created table")
+    logger.info(" - created table")
 
     val envMap = Map[String,String](("Xmx", "512m"))
 
@@ -58,9 +62,9 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
   }
 
   override def afterAll() {
-    logInfo("shuting down minicluster")
+    logger.info("shuting down minicluster")
     TEST_UTIL.shutdownMiniCluster()
-    logInfo(" - minicluster shut down")
+    logger.info(" - minicluster shut down")
     TEST_UTIL.cleanupTestDir()
     sc.stop()
   }
@@ -69,7 +73,7 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
     "with all default HFile Configs.") {
     val config = TEST_UTIL.getConfiguration
 
-    logInfo(" - creating table " + tableName)
+    logger.info(" - creating table " + tableName)
     TEST_UTIL.createTable(TableName.valueOf(tableName),
       Array(Bytes.toBytes(columnFamily1), Bytes.toBytes(columnFamily2)))
 
@@ -194,7 +198,7 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
     "using an implicit call to bulk load") {
     val config = TEST_UTIL.getConfiguration
 
-    logInfo(" - creating table " + tableName)
+    logger.info(" - creating table " + tableName)
     TEST_UTIL.createTable(TableName.valueOf(tableName),
       Array(Bytes.toBytes(columnFamily1), Bytes.toBytes(columnFamily2)))
 
@@ -324,7 +328,7 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
     splitKeys(0) = Bytes.toBytes("2")
     splitKeys(1) = Bytes.toBytes("4")
 
-    logInfo(" - creating table " + tableName)
+    logger.info(" - creating table " + tableName)
     TEST_UTIL.createTable(TableName.valueOf(tableName),
       Array(Bytes.toBytes(columnFamily1), Bytes.toBytes(columnFamily2)),
       splitKeys)
@@ -538,7 +542,7 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
     "with all default HFile Configs") {
     val config = TEST_UTIL.getConfiguration
 
-    logInfo(" - creating table " + tableName)
+    logger.info(" - creating table " + tableName)
     TEST_UTIL.createTable(TableName.valueOf(tableName),
       Array(Bytes.toBytes(columnFamily1), Bytes.toBytes(columnFamily2)))
 
@@ -665,7 +669,7 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
     "using an implicit call to bulk load") {
     val config = TEST_UTIL.getConfiguration
 
-    logInfo(" - creating table " + tableName)
+    logger.info(" - creating table " + tableName)
     TEST_UTIL.createTable(TableName.valueOf(tableName),
       Array(Bytes.toBytes(columnFamily1), Bytes.toBytes(columnFamily2)))
 
@@ -799,7 +803,7 @@ BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
     splitKeys(0) = Bytes.toBytes("2")
     splitKeys(1) = Bytes.toBytes("4")
 
-    logInfo(" - creating table " + tableName)
+    logger.info(" - creating table " + tableName)
     TEST_UTIL.createTable(TableName.valueOf(tableName),
       Array(Bytes.toBytes(columnFamily1), Bytes.toBytes(columnFamily2)),
       splitKeys)

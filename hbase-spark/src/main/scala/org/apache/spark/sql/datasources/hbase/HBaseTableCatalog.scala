@@ -22,10 +22,10 @@ import org.apache.hadoop.hbase.spark.SchemaConverters
 import org.apache.hadoop.hbase.spark.datasources._
 import org.apache.hadoop.hbase.spark.hbase._
 import org.apache.hadoop.hbase.util.Bytes
-import org.apache.spark.Logging
-import org.apache.spark.sql.catalyst.util.DataTypeParser
+import org.apache.spark.sql.catalyst.parser.CatalystSqlParser
 import org.apache.spark.sql.types._
 import org.json4s.jackson.JsonMethods._
+import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 
@@ -39,12 +39,14 @@ case class Field(
     sType: Option[String] = None,
     avroSchema: Option[String] = None,
     serdes: Option[SerDes]= None,
-    len: Int = -1) extends Logging {
+    len: Int = -1) {
+  val logger = LoggerFactory.getLogger(classOf[Field])
+
   override def toString = s"$colName $cf $col"
   val isRowKey = cf == HBaseTableCatalog.rowKey
   var start: Int = _
   def schema: Option[Schema] = avroSchema.map { x =>
-    logDebug(s"avro: $x")
+    logger.debug(s"avro: $x")
     val p = new Schema.Parser
     p.parse(x)
   }
@@ -53,7 +55,7 @@ case class Field(
 
   // converter from avro to catalyst structure
   lazy val avroToCatalyst: Option[Any => Any] = {
-    schema.map(SchemaConverters.createConverterToSQL(_))
+    schema.map(SchemaConverters.createConverterToSQL)
   }
 
   // converter from catalyst to avro
@@ -77,7 +79,7 @@ case class Field(
   }
 
   val dt = {
-    sType.map(DataTypeParser.parse(_)).getOrElse{
+    sType.map(CatalystSqlParser.parseDataType).getOrElse{
       schema.map{ x=>
         SchemaConverters.toSqlType(x).dataType
       }.get
@@ -144,7 +146,9 @@ case class HBaseTableCatalog(
      name: String,
      row: RowKey,
      sMap: SchemaMap,
-     @transient params: Map[String, String]) extends Logging {
+     @transient params: Map[String, String]) {
+  val logger = LoggerFactory.getLogger(classOf[HBaseTableCatalog])
+
   def toDataType = StructType(sMap.toFields)
   def getField(name: String) = sMap.getField(name)
   def getRowKey: Seq[Field] = row.fields
@@ -157,11 +161,11 @@ case class HBaseTableCatalog(
 
   // Setup the start and length for each dimension of row key at runtime.
   def dynSetupRowKey(rowKey: Array[Byte]) {
-    logDebug(s"length: ${rowKey.length}")
+    logger.debug(s"length: ${rowKey.length}")
     if(row.varLength) {
       var start = 0
       row.fields.foreach { f =>
-        logDebug(s"start: $start")
+        logger.debug(s"start: $start")
         f.start = start
         f.length = {
           // If the length is not defined
@@ -190,7 +194,7 @@ case class HBaseTableCatalog(
     val fields = sMap.fields.filter(_.cf == HBaseTableCatalog.rowKey)
     row.fields = row.keys.flatMap(n => fields.find(_.col == n))
     // The length is determined at run time if it is string or binary and the length is undefined.
-    if (row.fields.filter(_.length == -1).isEmpty) {
+    if (!row.fields.exists(_.length == -1)) {
       var start = 0
       row.fields.foreach { f =>
         f.start = start

@@ -27,7 +27,8 @@ class NewHBaseRDD[K,V](@transient sc : SparkContext,
                        @transient keyClass: Class[K],
                        @transient valueClass: Class[V],
                    @transient conf: Configuration,
-                   val hBaseContext: HBaseContext) extends NewHadoopRDD(sc,inputFormatClass, keyClass, valueClass, conf) {
+                   val hBaseContext: HBaseContext)
+  extends NewHadoopRDD(sc,inputFormatClass, keyClass, valueClass, conf) {
 
   override def compute(theSplit: Partition, context: TaskContext): InterruptibleIterator[(K, V)] = {
     hBaseContext.applyCreds()

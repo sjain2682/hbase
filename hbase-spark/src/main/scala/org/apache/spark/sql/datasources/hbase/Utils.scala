@@ -20,7 +20,6 @@ package org.apache.spark.sql.datasources.hbase
 
 import org.apache.hadoop.hbase.spark.AvroSerdes
 import org.apache.hadoop.hbase.util.Bytes
-import org.apache.spark.sql.execution.SparkSqlSerializer
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
@@ -58,7 +57,8 @@ object Utils {
           System.arraycopy(src, offset, newArray, 0, length)
           newArray
         // TODO: add more data type support
-        case _ => SparkSqlSerializer.deserialize[Any](src)
+        //case _ => SparkSqlSerializer.deserialize[Any](src)
+        case _ => throw new Exception(s"unsupported data type ${f.dt}")
       }
     }
   }
