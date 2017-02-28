@@ -102,11 +102,16 @@ case class HBaseRelation (
 
   val catalog = HBaseTableCatalog(parameters)
   def tableName = catalog.name
+  val isMapRDB = tableName.startsWith("/")
   val configResources = parameters.getOrElse(HBaseSparkConf.HBASE_CONFIG_RESOURCES_LOCATIONS, "")
   val useHBaseContext =  parameters.get(HBaseSparkConf.USE_HBASE_CONTEXT)
     .forall(_.toBoolean)
-  val usePushDownColumnFilter = parameters.get(HBaseSparkConf.PUSH_DOWN_COLUMN_FILTER)
-    .forall(_.toBoolean)
+  val usePushDownColumnFilter = parameters.getOrElse(HBaseSparkConf.PUSH_DOWN_COLUMN_FILTER, {
+    if (isMapRDB)
+      HBaseSparkConf.maprDbDefaultPushDownColumnFilter
+    else
+      HBaseSparkConf.defaultPushDownColumnFilter
+  }).toBoolean
 
   // The user supplied per table parameter will overwrite global ones in SparkConf
   val blockCacheEnable = parameters.get(HBaseSparkConf.BLOCK_CACHE_ENABLE).map(_.toBoolean)

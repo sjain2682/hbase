@@ -35,7 +35,8 @@ object HBaseSparkConf{
   val HBASE_CONFIG_RESOURCES_LOCATIONS = "hbase.config.resources"
   val USE_HBASE_CONTEXT = "hbase.use.hbase.context"
   val PUSH_DOWN_COLUMN_FILTER = "hbase.pushdown.column.filter"
-  val defaultPushDownColumnFilter = true
+  val defaultPushDownColumnFilter = "true"
+  val maprDbDefaultPushDownColumnFilter = "false"
 
   val TIMESTAMP = "hbase.spark.query.timestamp"
   val MIN_TIMESTAMP = "hbase.spark.query.minTimestamp"
