@@ -127,11 +127,17 @@ object AvroSource {
       .format("org.apache.hadoop.hbase.spark")
       .save()
 
+    val sqlFriendlyTableName = if (tableName.startsWith("/")) {
+      tableName.substring(1)
+    } else {
+      tableName
+    }
+
     val df = withCatalog(catalog)
     df.show
     df.printSchema()
-    df.createOrReplaceTempView(tableName)
-    val c = sqlContext.sql(s"select count(1) from $tableName")
+    df.createOrReplaceTempView(sqlFriendlyTableName)
+    val c = sqlContext.sql(s"select count(1) from $sqlFriendlyTableName")
     c.show
 
     val filtered = df.select($"col0", $"col1.favorite_array").where($"col0" === "name001")
