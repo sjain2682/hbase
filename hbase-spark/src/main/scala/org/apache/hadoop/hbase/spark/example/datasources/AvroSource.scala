@@ -127,11 +127,7 @@ object AvroSource {
       .format("org.apache.hadoop.hbase.spark")
       .save()
 
-    val sqlFriendlyTableName = if (tableName.startsWith("/")) {
-      tableName.substring(1)
-    } else {
-      tableName
-    }
+    val sqlFriendlyTableName = "avrosource"
 
     val df = withCatalog(catalog)
     df.show
