@@ -258,25 +258,25 @@ curl -L  -o personality.sh "${env.PROJET_PERSONALITY}"
         dir ("component") {
           sh '''#!/bin/bash -e
             echo "Clean..."
-            mvn -DskipTests clean
+            mvn --batch-mode -DskipTests clean
             echo "Step 3 Build the source tarball"
-            mvn -Prelease -Dmaven.repo.local="${WORKSPACE}/.m2-for-repo" install -DskipTests assembly:single -Dassembly.file=hbase-assembly/src/main/assembly/src.xml
+            mvn -Prelease --batch-mode -Dmaven.repo.local="${WORKSPACE}/.m2-for-repo" install -DskipTests assembly:single -Dassembly.file=hbase-assembly/src/main/assembly/src.xml
 '''
         }
         dir ("unpacked_src_tarball") {
           sh '''#!/bin/bash -e
-            echo "Unpack the source tarball
+            echo "Unpack the source tarball"
             tar --strip-components=1 -xzf ../component/hbase-assembly/target/hbase-*-src.tar.gz
             echo "Building from source artifact."
-            mvn -DskipTests -Prelease -Dmaven.repo.local="${WORKSPACE}/.m2-for-src" clean install assembly:single
+            mvn -DskipTests -Prelease --batch-mode -Dmaven.repo.local="${WORKSPACE}/.m2-for-src" clean install assembly:single
             echo "Clean up after checking ability to build."
-            mvn -DskipTests clean
+            mvn -DskipTests --batch-mode clean
 '''
         }
         dir ("component") {
           sh '''#!/bin/bash -e
             echo "Clean up the source checkout"
-            mvn -DskipTests clean
+            mvn -DskipTests --batch-mode clean
             echo "Diff against source tree"
             diff --binary --recursive . ../unpacked_src_tarball >../diff_output || true
 '''
