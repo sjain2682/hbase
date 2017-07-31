@@ -60,6 +60,7 @@ pipeline {
   }
   stages {
     stage ('yetus install') {
+      when { expression { false } }
       steps {
         sh  '''#!/usr/bin/env bash
 echo "Ensure we have a copy of Apache Yetus."
@@ -107,6 +108,7 @@ curl -L  -o personality.sh "${env.PROJET_PERSONALITY}"
       }
     }
     stage ('yetus general check') {
+      when { expression { false } }
       environment {
         // TODO does hadoopcheck need to be jdk specific?
         // Should be things that work with multijdk
@@ -142,6 +144,7 @@ curl -L  -o personality.sh "${env.PROJET_PERSONALITY}"
     stage ('yetus jdk7 checks') {
       when {
         branch 'branch-1*'
+        expression { false }
       }
       environment {
         TESTS = 'mvninstall,compile,javac,unit,htmlout'
@@ -196,6 +199,7 @@ curl -L  -o personality.sh "${env.PROJET_PERSONALITY}"
         not {
           branch 'branch-1.1*'
         }
+        expression { false }
       }
       environment {
         TESTS = 'mvninstall,compile,javac,unit,findbugs,htmlout'
