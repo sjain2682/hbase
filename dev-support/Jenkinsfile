@@ -250,8 +250,11 @@ curl -L  -o personality.sh "${env.PROJET_PERSONALITY}"
     stage ('create source tarball') {
       tools {
         maven 'Maven (latest)'
+        // this needs to be set to the jdk that ought to be used to build releases on the branch the Jenkinsfile is stored in.
+        jdk "JDK 1.8 (latest)"
       }
       steps {
+        sh 'mvn --version --offline'
         dir ("component") {
           sh '''#!/bin/bash -e
             echo "Clean..."
