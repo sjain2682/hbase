@@ -298,9 +298,9 @@ END
       }
     }
   }
-  post {
-    failure {
-      deleteDir()
-    }
-  }
+//  post {
+  //  failure {
+  //    deleteDir()
+  //  }
+//  }
 }
