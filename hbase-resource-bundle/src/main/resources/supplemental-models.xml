@@ -1501,6 +1501,42 @@ Copyright (c) 2010-2011 Oracle and/or its affiliates.
   </supplement>
   <supplement>
     <project>
+      <groupId>com.sun.jersey</groupId>
+      <artifactId>jersey-servlet</artifactId>
+      <url>https://java.net/projects/jersey/</url>
+
+      <licenses>
+        <license>
+          <name>CDDL 1.1</name>
+          <url>https://glassfish.java.net/public/CDDL+GPL_1_1.html</url>
+          <distribution>repo</distribution>
+          <comments>
+Copyright (c) 2010-2011 Oracle and/or its affiliates.
+</comments>
+        </license>
+      </licenses>
+    </project>
+  </supplement>
+  <supplement>
+    <project>
+      <groupId>javax.ws.rs</groupId>
+      <artifactId>jsr311-api</artifactId>
+      <url>https://javaee.github.io/jsr311/</url>
+
+      <licenses>
+        <license>
+          <name>CDDL 1.1</name>
+          <url>https://glassfish.java.net/public/CDDL+GPL_1_1.html</url>
+          <distribution>repo</distribution>
+          <comments>
+Copyright (c) 2010-2011 Oracle and/or its affiliates.
+</comments>
+        </license>
+      </licenses>
+    </project>
+  </supplement>
+  <supplement>
+    <project>
       <groupId>com.sun.jersey.contribs</groupId>
       <artifactId>jersey-guice</artifactId>
       <url>https://java.net/projects/jersey/</url>
