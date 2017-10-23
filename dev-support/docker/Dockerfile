@@ -25,6 +25,7 @@ RUN apt-get -q update && apt-get -q install --no-install-recommends -y \
        libperl-critic-perl \
        pylint \
        python-dateutil \
+       rsync \
        ruby \
        shellcheck \
        wget \
