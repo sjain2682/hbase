@@ -146,6 +146,7 @@ import org.apache.hadoop.hbase.util.EnvironmentEdgeManager;
 import org.apache.hadoop.hbase.util.FSTableDescriptors;
 import org.apache.hadoop.hbase.util.FSUtils;
 import org.apache.hadoop.hbase.util.HasThread;
+import org.apache.hadoop.hbase.util.JSONBean;
 import org.apache.hadoop.hbase.util.JvmPauseMonitor;
 import org.apache.hadoop.hbase.util.NettyEventLoopGroupConfig;
 import org.apache.hadoop.hbase.util.Pair;
@@ -2400,7 +2401,7 @@ public class HRegionServer extends HasThread implements
         CoprocessorHost.getLoadedCoprocessors());
     // Try and dump metrics if abort -- might give clue as to how fatal came about....
     try {
-      LOG.info("Dump of metrics as JSON on abort: " + DumpRegionServerMetrics.dumpMetrics());
+      LOG.info("Dump of metrics as JSON on abort: " + JSONBean.dumpRegionServerMetrics());
     } catch (MalformedObjectNameException | IOException e) {
       LOG.warn("Failed dumping metrics", e);
     }

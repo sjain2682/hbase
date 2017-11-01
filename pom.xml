@@ -66,7 +66,6 @@
     <module>hbase-replication</module>
     <module>hbase-mapreduce</module>
     <module>hbase-resource-bundle</module>
-    <module>hbase-http</module>
     <module>hbase-server</module>
     <module>hbase-thrift</module>
     <module>hbase-shell</module>
@@ -1646,18 +1645,6 @@
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <artifactId>hbase-http</artifactId>
-        <groupId>org.apache.hbase</groupId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <artifactId>hbase-http</artifactId>
-        <groupId>org.apache.hbase</groupId>
-        <version>${project.version}</version>
-        <type>test-jar</type>
-        <scope>test</scope>
-      </dependency>
-      <dependency>
         <artifactId>hbase-server</artifactId>
         <groupId>org.apache.hbase</groupId>
         <version>${project.version}</version>
@@ -2001,11 +1988,6 @@
         <version>${jersey.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.glassfish.jersey.core</groupId>
-        <artifactId>jersey-server</artifactId>
-        <version>${jersey.version}</version>
-      </dependency>
-      <dependency>
         <!--This lib has JspC in it. Needed precompiling jsps in hbase-rest, etc.-->
         <groupId>org.glassfish.web</groupId>
         <artifactId>javax.servlet.jsp</artifactId>
@@ -2065,11 +2047,6 @@
         <artifactId>bcprov-jdk16</artifactId>
         <version>${bouncycastle.version}</version>
         <scope>test</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.kerby</groupId>
-        <artifactId>kerb-core</artifactId>
-        <version>${kerby.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.kerby</groupId>
