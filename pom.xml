@@ -1186,12 +1186,12 @@
     <!-- Dependencies -->
     <!-- Latest versions of Hadoop distributed with MapR -->
     <mapr.hadoop-two.version>4.1.0-mapr</mapr.hadoop-two.version>
-    <hadoop-two.version>2.7.0-mapr-1710-SNAPSHOT</hadoop-two.version>
+    <hadoop-two.version>2.7.0-mapr-1710</hadoop-two.version>
 
     <!-- minikdc introduced in hadoop-2.3; override when building earlier versions -->
     <hadoop-two-minikdc.version>${hadoop-two.version}</hadoop-two-minikdc.version>
     <!-- MapR does not have hadoop three yet, fake it with hadoop two -->
-    <hadoop-three.version>2.7.0-mapr-1710-SNAPSHOT</hadoop-three.version>
+    <hadoop-three.version>2.7.0-mapr-1710</hadoop-three.version>
 
     <!-- These must be defined here for downstream build tools that don't look at profiles.
          They ought to match the values found in our default hadoop profile, which is
