@@ -41,13 +41,29 @@ function add_property() {
   fi
 }
 
+function add_comment(){
+  line_name=$1
+      sed -i -e "s|</configuration>| \n <!--${line_name}-->\n</configuration>|" ${HBASE_SITE}
+}
+
+function remove_comment(){
+  line_name=$1
+  sed  -i  "/<!--${line_name}-->/d" ${HBASE_SITE}
+}
+
 function configure_thrift_impersonation() {
+  if ! grep -q hbase.regionserver.thrift.http "$HBASE_SITE" ; then
+    add_comment "Enabling Hbase thrift impersonation"
+  fi
   add_property hbase.regionserver.thrift.http true
   add_property hbase.thrift.support.proxyuser true
 }
 
 function configure_thrift_authentication() {
   if [ "$MAPR_SECURITY_STATUS" = "true" ]; then
+    if ! grep -q hbase.thrift.security.authentication "$HBASE_SITE" ; then
+        add_comment "Enabling Hbase thrift authentication"
+    fi
     add_property hbase.thrift.security.authentication maprsasl
     if [[  $MAPR_HBASE_SERVER_OPTS != *"Dhadoop.login=maprsasl_keytab" ]] ; then
       echo "export MAPR_HBASE_SERVER_OPTS=\"\${MAPR_HBASE_SERVER_OPTS} -Dhadoop.login=maprsasl_keytab\"" >> $env
@@ -56,6 +72,9 @@ function configure_thrift_authentication() {
 }
 
 function configure_thrift_encryption() {
+  if ! grep -q hbase.thrift.ssl.enabled "$HBASE_SITE" ; then
+    add_comment "Enabling Hbase thrift encryption"
+  fi
   add_property hbase.thrift.ssl.enabled true
   add_property hbase.thrift.ssl.keystore.store "$MAPR_HOME"/conf/ssl_keystore
   add_property hbase.thrift.ssl.keystore.password mapr123
@@ -63,10 +82,16 @@ function configure_thrift_encryption() {
 }
 
 function configure_rest_authentication() {
+  if ! grep -q hbase.rest.authentication.type "$HBASE_SITE" ; then
+    add_comment "Enabling Hbase REST authentication"
+  fi
   add_property hbase.rest.authentication.type org.apache.hadoop.security.authentication.server.MultiMechsAuthenticationHandler
 }
 
-function configure_rest_encryption() { 
+function configure_rest_encryption() {
+  if ! grep -q hbase.rest.ssl.enabled "$HBASE_SITE" ; then
+    add_comment "Enabling Hbase REST encryption"
+  fi
   add_property hbase.rest.ssl.enabled true
   add_property hbase.rest.ssl.keystore.store "$MAPR_HOME"/conf/ssl_keystore
   add_property hbase.rest.ssl.keystore.password mapr123
@@ -75,17 +100,21 @@ function configure_rest_encryption() {
 
 function configure_thrift_unsecure(){
   #disable encryption
+  remove_comment "Enabling Hbase thrift encryption"
   remove_property hbase.thrift.ssl.enabled
   remove_property hbase.thrift.ssl.keystore.store
   remove_property hbase.thrift.ssl.keystore.password
   remove_property hbase.thrift.ssl.keystore.keypassword
 
   #disable authentification
+  remove_comment "Enabling Hbase thrift authentication"
   remove_property hbase.thrift.security.authentication
   sed -i "/\b\(MAPR_HBASE_SERVER_OPTS.\|maprsasl_keytab\)\b/d" $env
 } 
 
 function configure_rest_unsecure() {
+  remove_comment "Enabling Hbase REST encryption"
+
   #disable encryption
   remove_property hbase.rest.ssl.enabled
   remove_property hbase.rest.ssl.keystore.store
