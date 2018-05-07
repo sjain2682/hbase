@@ -20,6 +20,8 @@ HBASE_VERSION=$(cat "$HBASE_VERSION_FILE")
 HBASE_HOME="$MAPR_HOME"/hbase/hbase-"$HBASE_VERSION"
 HBASE_SITE=${HBASE_HOME}/conf/hbase-site.xml
 
+# Warden-specific
+MAPR_CONF_DIR=${MAPR_CONF_DIR:-"$MAPR_HOME/conf"}
 
 function change_permissions() {
     chown -R ${MAPR_USER} ${HBASE_HOME}
@@ -110,7 +112,7 @@ function configure_thrift_unsecure(){
   remove_comment "Enabling Hbase thrift authentication"
   remove_property hbase.thrift.security.authentication
   sed -i "/\b\(MAPR_HBASE_SERVER_OPTS.\|maprsasl_keytab\)\b/d" $env
-} 
+}
 
 function configure_rest_unsecure() {
   remove_comment "Enabling Hbase REST encryption"
@@ -121,6 +123,35 @@ function configure_rest_unsecure() {
   remove_property hbase.rest.ssl.keystore.password
   remove_property hbase.rest.ssl.keystore.keypassword
 }
+
+#
+# Add warden files
+#
+function copyWardenFile() {
+	if [ -f $HBASE_HOME/conf/warden.${1}.conf ] ; then
+		cp "${HBASE_HOME}/conf/warden.${1}.conf" "${MAPR_CONF_DIR}/conf.d/" 2>/dev/null || :
+		sed -i s/\${VERSION}/`cat ${HBASE_HOME}/../hbaseversion`/g ${MAPR_CONF_DIR}/conf.d/warden.${1}.conf
+	fi
+}
+
+function copyWardenConfFiles() {
+	mkdir -p "$MAPR_HOME"/conf/conf.d
+	copyWardenFile hbasethrift
+	copyWardenFile hbaserest
+}
+
+function stopService() {
+	if [ -e ${MAPR_CONF_DIR}/conf.d/warden.${1}.conf ]; then
+		logInfo "Stopping hbase-$1..."
+		${HBASE_HOME}/bin/hbase-daemon.sh stop ${2}
+	fi
+}
+
+function stopServicesForRestartByWarden() {
+	stopService hbase-rest rest
+	stopService hbase-thrift thrift
+}
+
 
 
 { OPTS=`getopt -n "$0" -a -o suhR --long secure,unsecure,help,EC -- "$@"`; } 2>/dev/null
@@ -139,7 +170,7 @@ while true; do
     SECURE=false;
     shift ;;
 
-    -cs | --customSecure)  
+    -cs | --customSecure)
       if [ -f "$HBASE_HOME/conf/.not_configured_yet" ]; then
         SECURE=true;
       else
@@ -147,7 +178,7 @@ while true; do
         CUSTOM=true;
       fi
     shift ;;
-    
+
     -h | --help ) HELP=true; shift ;;
 
     -R)
@@ -163,24 +194,36 @@ while true; do
   esac
 done
 
-if [ -f "$HBASE_HOME/conf/.not_configured_yet" ]  ; then
-    rm -f "$HBASE_HOME/conf/.not_configured_yet"
-fi
-
-change_permissions
-
 if $SECURE; then
-    configure_thrift_authentication
-    configure_thrift_encryption
-    configure_thrift_impersonation
-    configure_rest_authentication
-    configure_rest_encryption
+	if [ -f $HBASE_HOME/conf/warden.hbasethrift.conf ] ; then
+    	configure_thrift_authentication
+    	configure_thrift_encryption
+    	configure_thrift_impersonation
+   	fi
+	if [ -f $HBASE_HOME/conf/warden.hbaserest.conf ] ; then
+    	configure_rest_authentication
+    	configure_rest_encryption
+   	fi
 else
     if $CUSTOM; then
       exit 0
     fi
-    configure_rest_unsecure
-    configure_thrift_unsecure
+    if $SECURE; then
+		if [ -f $HBASE_HOME/conf/warden.hbasethrift.conf ] ; then
+			configure_thrift_unsecure
+   		fi
+		if [ -f $HBASE_HOME/conf/warden.hbaserest.conf ] ; then
+	    	configure_rest_unsecure
+	   	fi
+	fi
+fi
+
+change_permissions
+copyWardenConfFiles
+stopServicesForRestartByWarden
+
+if [ -f "$HBASE_HOME/conf/.not_configured_yet" ]  ; then
+    rm -f "$HBASE_HOME/conf/.not_configured_yet"
 fi
 
 exit 0
