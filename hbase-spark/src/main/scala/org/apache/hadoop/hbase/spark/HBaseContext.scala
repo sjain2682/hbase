@@ -64,7 +64,7 @@ class HBaseContext(@transient sc: SparkContext,
 
   val logger = LoggerFactory.getLogger(classOf[HBaseContext])
 
-  @transient var credentials = SparkHadoopUtil.get.getCurrentUserCredentials()
+  @transient var credentials = UserGroupInformation.getCurrentUser.getCredentials
   @transient var tmpHdfsConfiguration:Configuration = config
   @transient var appliedCredentials = false
   @transient val job = Job.getInstance(config)
