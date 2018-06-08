@@ -127,23 +127,30 @@ function configure_rest_encryption() {
   create_keystore_credential "$REST_KEYPASSWORD_ALIAS" "$KEYSTORE_PASSWORD" &>/dev/null
 }
 
+function configure_rest_impersonation() {
+  if ! grep -q hbase.rest.support.proxyuser "$HBASE_SITE" ; then
+    add_comment "Enabling Hbase REST impersonation"
+  fi
+  add_property hbase.rest.support.proxyuser true
+}
+
 #
 # Writes keystore credential to the '.jceks' file. If there is no such file, it will be created.
 # If hbase is not configured yet and the credential with the same alias exists, it will be overwritten.
 # If keystore credential with the same alias already exists and hive is configured, it will not be overwritten.
 #
 create_keystore_credential(){
-ALIAS="$1"
-PASSWORD="$2"
-if is_hbase_not_configured_yet ; then
-  su "$MAPR_USER" -c "hadoop credential delete $ALIAS -provider $HBASE_KEYSTORE_PATH -f"
-  su "$MAPR_USER" -c "hadoop credential create $ALIAS -value $PASSWORD -provider $HBASE_KEYSTORE_PATH"
-else
-  if ! su "$MAPR_USER" -c "hadoop credential list -provider $HBASE_KEYSTORE_PATH | grep $ALIAS"; then
+  ALIAS="$1"
+  PASSWORD="$2"
+  if is_hbase_not_configured_yet ; then
+    su "$MAPR_USER" -c "hadoop credential delete $ALIAS -provider $HBASE_KEYSTORE_PATH -f"
     su "$MAPR_USER" -c "hadoop credential create $ALIAS -value $PASSWORD -provider $HBASE_KEYSTORE_PATH"
+  else
+    if ! su "$MAPR_USER" -c "hadoop credential list -provider $HBASE_KEYSTORE_PATH | grep $ALIAS"; then
+      su "$MAPR_USER" -c "hadoop credential create $ALIAS -value $PASSWORD -provider $HBASE_KEYSTORE_PATH"
+    fi
   fi
-fi
-su "$MAPR_USER" -c "hadoop fs -chmod $KEYSTORE_PERMS /user/${MAPR_USER}/hbase.jceks"
+  su "$MAPR_USER" -c "hadoop fs -chmod $KEYSTORE_PERMS /user/${MAPR_USER}/hbase.jceks"
 }
 
 
@@ -153,7 +160,7 @@ function configure_thrift_unsecure(){
   remove_property hbase.thrift.ssl.enabled
   remove_property hbase.thrift.ssl.keystore.store
 
-  #disable authentification
+  #disable authentication
   remove_comment "Enabling Hbase thrift authentication"
   remove_property hbase.thrift.security.authentication
   sed -i "/\b\(MAPR_HBASE_SERVER_OPTS.\|maprsasl_keytab\)\b/d" $env
@@ -246,19 +253,18 @@ if $SECURE; then
 	if [ -f $HBASE_HOME/conf/warden.hbaserest.conf ] ; then
     	configure_rest_authentication
     	configure_rest_encryption
+    	configure_rest_impersonation
    	fi
 else
     if $CUSTOM; then
       exit 0
     fi
-    if $SECURE; then
 		if [ -f $HBASE_HOME/conf/warden.hbasethrift.conf ] ; then
 			configure_thrift_unsecure
    		fi
 		if [ -f $HBASE_HOME/conf/warden.hbaserest.conf ] ; then
 	    	configure_rest_unsecure
 	   	fi
-	fi
 fi
 
 change_permissions
