@@ -23,26 +23,6 @@ HBASE_SITE=${HBASE_HOME}/conf/hbase-site.xml
 # Warden-specific
 MAPR_CONF_DIR=${MAPR_CONF_DIR:-"$MAPR_HOME/conf"}
 
-# Rest and Thrift security
-THRIFT_PASSWORD_ALIAS="hbase.thrift.ssl.keystore.password"
-THRIFT_KEYPASSWORD_ALIAS="hbase.thrift.ssl.keystore.keypassword"
-REST_PASSWORD_ALIAS="hbase.rest.ssl.keystore.password"
-REST_KEYPASSWORD_ALIAS="hbase.rest.ssl.keystore.keypassword"
-HBASE_KEYSTORE_PATH="jceks://maprfs/user/${MAPR_USER}/hbase.jceks"
-HADOOP_CREDENTIAL_PROVIDER_PROP="hadoop.security.credential.provider.path"
-KEYSTORE_PERMS="644"
-KEYSTORE_PASSWORD="mapr123"
-
-#
-# Checks if Hbase has been already configured
-#
-is_hbase_not_configured_yet(){
-if [ -f "$HBASE_HOME/conf/.not_configured_yet" ]; then
-  return 0; # 0 = true
-else
-  return 1;
-fi
-}
 
 function change_permissions() {
     chown -R ${MAPR_USER} ${HBASE_HOME}
@@ -99,12 +79,6 @@ function configure_thrift_encryption() {
     add_comment "Enabling Hbase thrift encryption"
   fi
   add_property hbase.thrift.ssl.enabled true
-  add_property hbase.thrift.ssl.keystore.store "$MAPR_HOME"/conf/ssl_keystore
-  if ! grep -q "$HADOOP_CREDENTIAL_PROVIDER_PROP" "$HBASE_SITE" ; then
-    add_property "$HADOOP_CREDENTIAL_PROVIDER_PROP" "$HBASE_KEYSTORE_PATH"
-  fi
-  create_keystore_credential "$THRIFT_PASSWORD_ALIAS" "$KEYSTORE_PASSWORD" &>/dev/null
-  create_keystore_credential "$THRIFT_KEYPASSWORD_ALIAS" "$KEYSTORE_PASSWORD" &>/dev/null
 }
 
 function configure_rest_authentication() {
@@ -118,13 +92,6 @@ function configure_rest_encryption() {
   if ! grep -q hbase.rest.ssl.enabled "$HBASE_SITE" ; then
     add_comment "Enabling Hbase REST encryption"
   fi
-  add_property hbase.rest.ssl.enabled true
-  add_property hbase.rest.ssl.keystore.store "$MAPR_HOME"/conf/ssl_keystore
-  if ! grep -q "$HADOOP_CREDENTIAL_PROVIDER_PROP" "$HBASE_SITE" ; then
-    add_property "$HADOOP_CREDENTIAL_PROVIDER_PROP" "$HBASE_KEYSTORE_PATH"
-  fi
-  create_keystore_credential "$REST_PASSWORD_ALIAS" "$KEYSTORE_PASSWORD" &>/dev/null
-  create_keystore_credential "$REST_KEYPASSWORD_ALIAS" "$KEYSTORE_PASSWORD" &>/dev/null
 }
 
 function configure_rest_impersonation() {
@@ -133,26 +100,6 @@ function configure_rest_impersonation() {
   fi
   add_property hbase.rest.support.proxyuser true
 }
-
-#
-# Writes keystore credential to the '.jceks' file. If there is no such file, it will be created.
-# If hbase is not configured yet and the credential with the same alias exists, it will be overwritten.
-# If keystore credential with the same alias already exists and hive is configured, it will not be overwritten.
-#
-create_keystore_credential(){
-  ALIAS="$1"
-  PASSWORD="$2"
-  if is_hbase_not_configured_yet ; then
-    su "$MAPR_USER" -c "hadoop credential delete $ALIAS -provider $HBASE_KEYSTORE_PATH -f"
-    su "$MAPR_USER" -c "hadoop credential create $ALIAS -value $PASSWORD -provider $HBASE_KEYSTORE_PATH"
-  else
-    if ! su "$MAPR_USER" -c "hadoop credential list -provider $HBASE_KEYSTORE_PATH | grep $ALIAS"; then
-      su "$MAPR_USER" -c "hadoop credential create $ALIAS -value $PASSWORD -provider $HBASE_KEYSTORE_PATH"
-    fi
-  fi
-  su "$MAPR_USER" -c "hadoop fs -chmod $KEYSTORE_PERMS /user/${MAPR_USER}/hbase.jceks"
-}
-
 
 function configure_thrift_unsecure(){
   #disable encryption

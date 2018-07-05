@@ -1185,6 +1185,7 @@
 
     <!-- Dependencies -->
     <!-- Latest versions of Hadoop distributed with MapR -->
+    <mapr.release.version>6.1.0-mapr-SNAPSHOT</mapr.release.version> <!-- TODO: remove SNAPSHOT after 6.1.0 release -->
     <mapr.hadoop-two.version>4.1.0-mapr</mapr.hadoop-two.version>
     <hadoop-two.version>2.7.0-mapr-1803</hadoop-two.version>
 

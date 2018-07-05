@@ -51,9 +51,6 @@ public interface Constants {
   String REST_AUTHENTICATION_PRINCIPAL = "hbase.rest.authentication.kerberos.principal";
 
   String REST_SSL_ENABLED = "hbase.rest.ssl.enabled";
-  String REST_SSL_KEYSTORE_STORE = "hbase.rest.ssl.keystore.store";
-  String REST_SSL_KEYSTORE_PASSWORD = "hbase.rest.ssl.keystore.password";
-  String REST_SSL_KEYSTORE_KEYPASSWORD = "hbase.rest.ssl.keystore.keypassword";
 
   String REST_DNS_NAMESERVER = "hbase.rest.dns.nameserver";
   String REST_DNS_INTERFACE = "hbase.rest.dns.interface";

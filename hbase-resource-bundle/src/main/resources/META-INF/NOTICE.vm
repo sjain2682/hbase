@@ -243,6 +243,7 @@ JRuby's licence.
 ## track jruby
 #set($jruby=false)
 #foreach( ${dep} in ${projects} )
+#if( !(${dep.artifactId.equals("mapr-security-web")}) )
 #if(${dep.artifactId.equals("findbugs-annotations")})
 #if(${dep.groupId.equals("com.github.stephenc.findbugs")})
 #findbugs_cleanroom_notice()
@@ -298,6 +299,7 @@ Licensed under ${dep.licenses[0].name}, see LICENSE for details.
 incorporated from ${dep.groupId}:${dep.artifactId}:${dep.packaging}:${dep.version}
 
 For source see '${dep.url}'.
+#end
 #end
 #end
 #end
