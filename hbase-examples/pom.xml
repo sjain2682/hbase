@@ -212,10 +212,20 @@ if we can combine these profiles somehow -->
                  <groupId>org.apache.hadoop</groupId>
                  <artifactId>hadoop-mapreduce-client-core</artifactId>
              </dependency>
-             <dependency>
-                 <groupId>org.apache.hadoop</groupId>
-                 <artifactId>hadoop-common</artifactId>
-             </dependency>
+           <dependency>
+             <groupId>org.apache.hadoop</groupId>
+             <artifactId>hadoop-common</artifactId>
+             <exclusions>
+               <exclusion>
+                 <groupId>xerces</groupId>
+                 <artifactId>xercesImpl</artifactId>
+               </exclusion>
+               <exclusion>
+                 <groupId>com.mapr.hadoop</groupId>
+                 <artifactId>maprfs</artifactId>
+               </exclusion>
+             </exclusions>
+           </dependency>
          </dependencies>
          <build>
              <plugins>
@@ -257,10 +267,20 @@ if we can combine these profiles somehow -->
              <hadoop.version>3.0-SNAPSHOT</hadoop.version>
          </properties>
          <dependencies>
-             <dependency>
-                 <groupId>org.apache.hadoop</groupId>
-                 <artifactId>hadoop-common</artifactId>
-             </dependency>
+           <dependency>
+             <groupId>org.apache.hadoop</groupId>
+             <artifactId>hadoop-common</artifactId>
+             <exclusions>
+               <exclusion>
+                 <groupId>xerces</groupId>
+                 <artifactId>xercesImpl</artifactId>
+               </exclusion>
+               <exclusion>
+                 <groupId>com.mapr.hadoop</groupId>
+                 <artifactId>maprfs</artifactId>
+               </exclusion>
+             </exclusions>
+           </dependency>
              <dependency>
                  <groupId>org.apache.hadoop</groupId>
                  <artifactId>hadoop-annotations</artifactId>

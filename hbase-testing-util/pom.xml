@@ -187,6 +187,16 @@
                     <groupId>org.apache.hadoop</groupId>
                     <artifactId>hadoop-common</artifactId>
                     <scope>compile</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>xerces</groupId>
+                            <artifactId>xercesImpl</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>com.mapr.hadoop</groupId>
+                            <artifactId>maprfs</artifactId>
+                        </exclusion>
+                    </exclusions>
                 </dependency>
                 <dependency>
                     <groupId>org.apache.hadoop</groupId>
@@ -223,6 +233,12 @@
                     <groupId>org.apache.hadoop</groupId>
                     <artifactId>hadoop-minicluster</artifactId>
                     <scope>compile</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>com.mapr.hadoop</groupId>
+                            <artifactId>maprfs</artifactId>
+                        </exclusion>
+                    </exclusions>
                 </dependency>
             </dependencies>
         </profile>
@@ -246,6 +262,16 @@
                     <groupId>org.apache.hadoop</groupId>
                     <artifactId>hadoop-common</artifactId>
                     <scope>compile</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>xerces</groupId>
+                            <artifactId>xercesImpl</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>com.mapr.hadoop</groupId>
+                            <artifactId>maprfs</artifactId>
+                        </exclusion>
+                    </exclusions>
                 </dependency>
                 <dependency>
                     <groupId>org.apache.hadoop</groupId>

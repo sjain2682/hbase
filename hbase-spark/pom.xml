@@ -89,6 +89,10 @@
           <groupId>xerces</groupId>
           <artifactId>xercesImpl</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>com.mapr.hadoop</groupId>
+          <artifactId>maprfs</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -203,6 +207,14 @@
           <groupId>com.google.code.findbugs</groupId>
           <artifactId>jsr305</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>xerces</groupId>
+          <artifactId>xercesImpl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.mapr.hadoop</groupId>
+          <artifactId>maprfs</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
 
@@ -240,6 +252,14 @@
         <exclusion>
           <groupId>com.google.code.findbugs</groupId>
           <artifactId>jsr305</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>xerces</groupId>
+          <artifactId>xercesImpl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.mapr.hadoop</groupId>
+          <artifactId>maprfs</artifactId>
         </exclusion>
       </exclusions>
     </dependency>

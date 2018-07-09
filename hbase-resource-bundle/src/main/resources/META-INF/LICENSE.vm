@@ -1564,7 +1564,6 @@ You can redistribute it and/or modify it under either the terms of the GPL
 #set($non_aggregate_fine = [ 'Public Domain', 'New BSD license', 'BSD license', 'Mozilla Public License Version 2.0', 'Mozilla Public License Version 1.1' ])
 ## include LICENSE sections for anything not under ASL2.0
 #foreach( ${dep} in ${projects} )
-#if( !(${dep.artifactId.equals("mapr-security-web")}) )
 #if(${debug-print-included-work-info.equalsIgnoreCase("true")})
 =====
 Check license for included work
@@ -1670,7 +1669,6 @@ ${dep.scm.url}
 ## the generated LICENSE file that has the actual dependency info printed.
 #set($empty = [])
 ${empty[0]}
-#end
 #end
 #end
 #end

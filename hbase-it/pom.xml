@@ -344,6 +344,16 @@
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-common</artifactId>
+          <exclusions>
+            <exclusion>
+              <groupId>xerces</groupId>
+              <artifactId>xercesImpl</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>com.mapr.hadoop</groupId>
+              <artifactId>maprfs</artifactId>
+            </exclusion>
+          </exclusions>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
@@ -392,9 +402,19 @@
       </properties>
       <dependencies>
 	    <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-common</artifactId>
-        </dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-common</artifactId>
+        <exclusions>
+          <exclusion>
+            <groupId>xerces</groupId>
+            <artifactId>xercesImpl</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.mapr.hadoop</groupId>
+            <artifactId>maprfs</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-minicluster</artifactId>

@@ -290,6 +290,14 @@
               <groupId>tomcat</groupId>
               <artifactId>jasper-runtime</artifactId>
             </exclusion>
+            <exclusion>
+              <groupId>xerces</groupId>
+              <artifactId>xercesImpl</artifactId>
+            </exclusion>
+            <exclusion>
+              <groupId>com.mapr.hadoop</groupId>
+              <artifactId>maprfs</artifactId>
+            </exclusion>
           </exclusions>
         </dependency>
         <dependency>
