@@ -92,6 +92,7 @@ function configure_rest_encryption() {
   if ! grep -q hbase.rest.ssl.enabled "$HBASE_SITE" ; then
     add_comment "Enabling Hbase REST encryption"
   fi
+  add_property hbase.rest.ssl.enabled true
 }
 
 function configure_rest_impersonation() {
