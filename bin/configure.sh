@@ -25,8 +25,16 @@ MAPR_CONF_DIR=${MAPR_CONF_DIR:-"$MAPR_HOME/conf"}
 
 
 function change_permissions() {
-    chown -R ${MAPR_USER} ${HBASE_HOME}
-    chgrp -R ${MAPR_GROUP} ${HBASE_HOME}
+    HBASE_DIR_CONTENT=( ${HBASE_HOME}/* )
+    for HBASE_DIR_UNIT in ${HBASE_DIR_CONTENT[@]}; do
+        if [ $( basename $HBASE_DIR_UNIT ) != "logs" ]; then
+            chown -R ${MAPR_USER} ${HBASE_DIR_UNIT}
+            chgrp -R ${MAPR_GROUP} ${HBASE_DIR_UNIT}
+        else
+            chown ${MAPR_USER} ${HBASE_DIR_UNIT}
+            chgrp ${MAPR_GROUP} ${HBASE_DIR_UNIT}
+        fi
+    done
     chmod 644 ${HBASE_SITE}
     chmod u+x ${HBASE_HOME}/bin/*
 }
