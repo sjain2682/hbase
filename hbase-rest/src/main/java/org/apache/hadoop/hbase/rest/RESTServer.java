@@ -55,10 +55,6 @@ import com.google.common.base.Preconditions;
 import com.sun.jersey.api.json.JSONConfiguration;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
 
-import static org.apache.hadoop.hbase.MapRSslConfigReader.getClientKeyPassword;
-import static org.apache.hadoop.hbase.MapRSslConfigReader.getClientKeystoreLocation;
-import static org.apache.hadoop.hbase.MapRSslConfigReader.getClientKeystorePassword;
-
 /**
  * Main class for launching REST gateway as a servlet hosted by Jetty.
  * <p>
@@ -201,9 +197,12 @@ public class RESTServer implements Constants {
     Connector connector = new SelectChannelConnector();
     if(conf.getBoolean(REST_SSL_ENABLED, false)) {
       SslSelectChannelConnectorSecure sslConnector = new SslSelectChannelConnectorSecure();
-      sslConnector.setKeystore(getClientKeystoreLocation());
-      sslConnector.setPassword(getClientKeystorePassword());
-      sslConnector.setKeyPassword(getClientKeyPassword());
+      String keystore = conf.get(REST_SSL_KEYSTORE_STORE);
+      String password = conf.get(REST_SSL_KEYSTORE_PASSWORD, null);
+      String keyPassword = conf.get(REST_SSL_KEYSTORE_KEYPASSWORD, password);
+      sslConnector.setKeystore(keystore);
+      sslConnector.setPassword(password);
+      sslConnector.setKeyPassword(keyPassword);
       connector = sslConnector;
     }
     connector.setPort(servlet.getConfiguration().getInt("hbase.rest.port", 8080));
