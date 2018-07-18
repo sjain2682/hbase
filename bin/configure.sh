@@ -147,15 +147,15 @@ function copyWardenConfFiles() {
 }
 
 function stopService() {
-	if [ -e ${MAPR_CONF_DIR}/conf.d/warden.${1}.conf ]; then
-		logInfo "Stopping hbase-$1..."
-		${HBASE_HOME}/bin/hbase-daemon.sh stop ${2}
-	fi
+    if [ -e ${MAPR_CONF_DIR}/conf.d/warden.${1}.conf ]; then
+        logInfo "Stopping hbase-$1..."
+        su ${MAPR_USER} -c "$HBASE_HOME/bin/hbase-daemon.sh stop $2" 1>/dev/null &
+    fi
 }
 
 function stopServicesForRestartByWarden() {
-	stopService hbase-rest rest
-	stopService hbase-thrift thrift
+    stopService hbaserest rest
+    stopService hbasethrift thrift
 }
 
 
