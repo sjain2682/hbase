@@ -119,7 +119,7 @@ function configure_thrift_unsecure(){
   #disable authentication
   remove_comment "Enabling Hbase thrift authentication"
   remove_property hbase.thrift.security.authentication
-  sed -i "/\b\(MAPR_HBASE_SERVER_OPTS.\|maprsasl_keytab\)\b/d" $env
+  sed -i "/\bMAPR_HBASE_SERVER_OPTS.*maprsasl_keytab.*/d" $env
 }
 
 function configure_rest_unsecure() {
